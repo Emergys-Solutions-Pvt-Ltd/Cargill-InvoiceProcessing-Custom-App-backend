@@ -1,0 +1,80 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /MediaBox [0 0 612 792] /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Length 1400 >>
+stream
+BT
+/F1 18 Tf
+40 740 Td
+(Freight Processing Invoice) Tj
+/F2 10 Tf
+0 -22 Td
+(CARGILL CUSTOM APPS - FREIGHT PROCESSING APP) Tj
+0 -15 Td
+(Document Status: OFFICIAL VERIFIED INVOICE PREVIEW) Tj
+/F1 11 Tf
+0 -28 Td
+(Invoice Number: INV-FP-1001) Tj
+0 -16 Td
+(Vendor Legal Name: Molinos Agro S.A.) Tj
+0 -16 Td
+(CUIT / Tax ID: 30-50001234-9) Tj
+0 -16 Td
+(Reception Date: 2026-07-20) Tj
+/F1 12 Tf
+0 -30 Td
+(ITEMIZED BREAKDOWN & CHARGES) Tj
+/F2 10 Tf
+0 -18 Td
+(================================================================================) Tj
+0 -15 Td
+(Description                                       Quantity    Unit Price      Subtotal) Tj
+0 -15 Td
+(================================================================================) Tj
+0 -16 Td
+(Flete de Maiz CTG 10233259959 - 390 Km     30.21 Tn     $43,000.00      $1,299,030.00) Tj
+0 -16 Td
+(Servicio de Logistica Puerto Rosario       1.00 Serv    $120,000.00     $120,000.00) Tj
+0 -16 Td
+(Impuesto IVA (21%)                         1.00 Tax     $152,796.30     $152,796.30) Tj
+0 -18 Td
+(================================================================================) Tj
+/F1 12 Tf
+0 -24 Td
+(TOTAL INVOICE AMOUNT: USD $1,571,826.30) Tj
+/F2 9 Tf
+0 -35 Td
+(Note: This document is connected directly to the Cargill Freight Processing App module.) Tj
+0 -14 Td
+(Generated automatically by Cargill Custom Apps Platform. Authorized Signature Attached.) Tj
+ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000326 00000 n 
+0000000396 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1848
+%%EOF

@@ -1,0 +1,80 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /MediaBox [0 0 612 792] /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Length 1425 >>
+stream
+BT
+/F1 18 Tf
+40 740 Td
+(LATAM Freight Process Invoice) Tj
+/F2 10 Tf
+0 -22 Td
+(CARGILL CUSTOM APPS - LATAM FREIGHT PROCESS APP) Tj
+0 -15 Td
+(Document Status: OFFICIAL VERIFIED INVOICE PREVIEW) Tj
+/F1 11 Tf
+0 -28 Td
+(Invoice Number: INV-LATAM-2410) Tj
+0 -16 Td
+(Vendor Legal Name: MACAGNO ISUANI ANDRES AGUSTIN) Tj
+0 -16 Td
+(CUIT / Tax ID: 21-06406500-15) Tj
+0 -16 Td
+(Reception Date: 2026-07-18) Tj
+/F1 12 Tf
+0 -30 Td
+(ITEMIZED BREAKDOWN & CHARGES) Tj
+/F2 10 Tf
+0 -18 Td
+(================================================================================) Tj
+0 -15 Td
+(Description                                       Quantity    Unit Price      Subtotal) Tj
+0 -15 Td
+(================================================================================) Tj
+0 -16 Td
+(Flete Regional Santos - Rosario Hub        120.00 Tn    $28,500.00      $3,420,000.00) Tj
+0 -16 Td
+(Peajes y Tasas Aduaneras LATAM             1.00 Serv    $311,981.00     $311,981.00) Tj
+0 -16 Td
+(Recargo Combustible Transfronterizo        1.00 Fee     $400,000.00     $400,000.00) Tj
+0 -18 Td
+(================================================================================) Tj
+/F1 12 Tf
+0 -24 Td
+(TOTAL INVOICE AMOUNT: USD $4,131,981.00) Tj
+/F2 9 Tf
+0 -35 Td
+(Note: This document is connected directly to the Cargill LATAM Freight Process App module.) Tj
+0 -14 Td
+(Generated automatically by Cargill Custom Apps Platform. Authorized Signature Attached.) Tj
+ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000326 00000 n 
+0000000396 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1873
+%%EOF

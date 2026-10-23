@@ -1,0 +1,51 @@
+# Backend only: the API, against the database configured in .env (e.g. Supabase).
+#   docker compose up -d --build          -> http://localhost:4000/api/docs
+#
+# Local PostgreSQL instead of Supabase (schema + demo data loaded on first start):
+#   set DB_HOST=db, DB_PORT=5432, DB_NAME=cargill, DB_USER=cargill, DB_PASSWORD=cargill, DB_SSL=disable in .env
+#   docker compose --profile local-db up -d --build
+#
+# The full stack (API + frontend) is in ../docker-compose.yml.
+name: cargill-custom-apps-api
+
+services:
+  api:
+    build:
+      context: .
+    image: cargill-custom-apps-api:latest
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      # Browser origins allowed to call the API directly (the dev server and the dockerised frontend)
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - attachments:/app/storage/attachments
+    restart: unless-stopped
+
+  db:
+    profiles: [local-db]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: cargill
+      POSTGRES_USER: cargill
+      POSTGRES_PASSWORD: cargill
+    ports:
+      - "${DB_PUBLISHED_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../database/postgres:/db-scripts:ro
+      - ../database/docker-init.sh:/docker-entrypoint-initdb.d/10-cargill-schema.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cargill -d cargill"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  # Seeded from the image's storage/attachments on first start, then persists uploaded files
+  attachments:
+  pgdata:

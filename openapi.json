@@ -1,0 +1,3031 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Cargill Custom Apps API",
+    "version": "1.0.0",
+    "description": "REST API for the Cargill payment-processing apps (GP, SJO, ROSPBU).\n\n**Auth**: call `POST /auth/login`, then click **Authorize** and paste the returned `token`.\nDemo users (password `password`): `admin@cargill.com` (Admin), `GP.user@cargill.com`, `sjo.user@cargill.com`, `rospbu.user@cargill.com`.\n\n**Errors** are `{ \"message\": \"...\" }`; validation errors also carry `details`.\nDatabase function errors map CA400 → 400, CA404 → 404, CA409 → 409.\n\n[Download this OpenAPI JSON](/api/docs/openapi.json?download=1)"
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "This server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "System"
+    },
+    {
+      "name": "Auth",
+      "description": "Login screen"
+    },
+    {
+      "name": "Apps",
+      "description": "Dashboard / menu"
+    },
+    {
+      "name": "Invoices",
+      "description": "Invoices grid, Create Invoice, Bulk Upload, Invoice Detail"
+    },
+    {
+      "name": "Files",
+      "description": "Signed attachment downloads (no bearer token)"
+    },
+    {
+      "name": "App Config",
+      "description": "Admin Configuration screen (admin only)"
+    },
+    {
+      "name": "Users",
+      "description": "Settings / User Access Management (admin only)"
+    },
+    {
+      "name": "Lookups",
+      "description": "Dropdown sources"
+    },
+    {
+      "name": "Configuration",
+      "description": "Settings > Configuration master data: countries, states, cities, BUs, teams, statuses, processes"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Service and database health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/docs/openapi.json": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "This OpenAPI document",
+        "security": [],
+        "parameters": [
+          {
+            "name": "download",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Send as a file attachment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign in with email or short username",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "501": {
+            "description": "Azure AD sign-in not configured (isAD = true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Current user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUser"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/apps": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Applications the caller may open (all for admins)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Application"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/invoices": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Invoices of one app (newest reception date first)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "ALL",
+              "enum": [
+                "ALL",
+                "Pending",
+                "Approved",
+                "Processed",
+                "Rejected"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PageMeta"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data"
+                      ],
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/InvoiceListItem"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Create one invoice",
+        "description": "Creates the vendor (by CUIT) and country station when they do not exist yet. Counts toward the app's daily invoice limit.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateInvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/invoices/bulk": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Create up to 500 invoices (all or nothing)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkInvoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkInvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/invoices/{invoiceId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Invoice Detail (header, attachments, line items, CCPPs)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/invoices/{invoiceId}/attachments": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Attachments of an invoice (primary first)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Attachment"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Upload a PDF to the invoice (Invoice Details upload icon)",
+        "description": "The raw PDF is the request body (max 20 MB). With primary=true (default) it becomes the PDF shown in the viewer.",
+        "parameters": [
+          {
+            "name": "fileName",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "IN-0001065698.pdf"
+            }
+          },
+          {
+            "name": "title",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "primary",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Attachment"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/invoices/{invoiceId}/pdf-attachment": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Primary PDF metadata with a signed URL",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfAttachmentInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/invoices/{invoiceId}/status": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Change the workflow status",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "example": "Pending",
+                    "description": "A status code from Settings > Configuration > Statuses (GET /lookups); matched case-insensitively"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "maxLength": 20,
+                          "example": "Pending",
+                          "description": "A status code from Settings > Configuration > Statuses (GET /lookups); matched case-insensitively"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/invoices/{invoiceId}/details": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "put": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Save the Super User fields of the Invoice Details page",
+        "description": "Send every field; null clears a dropdown (\"--None--\"). The assigned user must be active and have access to the app.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceDetailsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/InvoiceDetail"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/invoices/{invoiceId}/send-to-previous-team": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Move the invoice back to the previous team (queue)",
+        "description": "Previous = the active team ordered just before the current one (Configuration > Teams sort order). Clears the assigned user.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "stage": {
+                          "$ref": "#/components/schemas/NamedRef"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/users": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Users an invoice of this app can be assigned to (granted users + admins)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/files/attachments/{id}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Download / preview an attachment via a signed URL",
+        "security": [],
+        "description": "Use the `url` values returned by the invoice endpoints; links expire (FILE_URL_TTL_SECONDS).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "expires",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Unix time (seconds)"
+          },
+          {
+            "name": "sig",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any value forces a download"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/config": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "App Config"
+        ],
+        "summary": "Settings, teams and paged team members of one app",
+        "parameters": [
+          {
+            "name": "team",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "ALL"
+            },
+            "example": "Reception Team"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/config/settings": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        }
+      ],
+      "put": {
+        "tags": [
+          "App Config"
+        ],
+        "summary": "Save settings (\"Save Changes\"); omitted fields are kept",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "settings": {
+                      "$ref": "#/components/schemas/AppSettings"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/config/members": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "App Config"
+        ],
+        "summary": "Add a team member",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TeamMember"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "App Config"
+        ],
+        "summary": "Remove team members (ids of other apps are ignored)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveMembersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Users (newest first)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "appFilter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "ALL"
+            },
+            "example": "GP"
+          },
+          {
+            "name": "roleFilter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "ALL",
+              "enum": [
+                "ALL",
+                "Admin",
+                "User"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PageMeta"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data"
+                      ],
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/User"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Create a user (\"Add New User\")",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/UserId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "One user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Update name / email / role / status / assigned apps",
+        "description": "`assignedApps`, when sent, replaces the current assignments. You cannot suspend or demote yourself.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Delete a user",
+        "description": "Invoices they created and their team memberships are kept (unlinked). You cannot delete yourself.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/users/{id}/status": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/UserId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Activate / suspend; omitting status flips the current one",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "Active",
+                      "Suspended"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/lookups": {
+      "get": {
+        "tags": [
+          "Lookups"
+        ],
+        "summary": "Vendors, stations, statuses and teams",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lookups"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/master-data/entities": {
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Configuration lists and their form rules",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MasterDataEntity"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          }
+        }
+      }
+    },
+    "/master-data/{entity}": {
+      "parameters": [
+        {
+          "name": "entity",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "countries",
+              "states",
+              "cities",
+              "business-units",
+              "teams",
+              "statuses",
+              "processes"
+            ]
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Items of one list, ordered by sort order then name (admin)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "states: country id, cities: state id"
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PageMeta"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data"
+                      ],
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/MasterDataItem"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Create an item (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MasterDataInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/master-data/{entity}/options": {
+      "parameters": [
+        {
+          "name": "entity",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "countries",
+              "states",
+              "cities",
+              "business-units",
+              "teams",
+              "statuses",
+              "processes"
+            ]
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Active items for dropdowns (any signed-in user)",
+        "parameters": [
+          {
+            "name": "parentId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MasterDataOption"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/master-data/{entity}/{id}": {
+      "parameters": [
+        {
+          "name": "entity",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "countries",
+              "states",
+              "cities",
+              "business-units",
+              "teams",
+              "statuses",
+              "processes"
+            ]
+          }
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "put": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Update an item (admin)",
+        "description": "Renaming a status code also updates the invoices that use it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MasterDataInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Delete an item (admin)",
+        "description": "Returns 409 while the item is still referenced (a country with states, a team with members, a status used by invoices): deactivate it instead.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token from POST /auth/login"
+      }
+    },
+    "parameters": {
+      "AppId": {
+        "name": "appId",
+        "in": "path",
+        "required": true,
+        "description": "App route slug",
+        "schema": {
+          "type": "string",
+          "example": "GP",
+          "enum": [
+            "GP",
+            "gpp",
+            "gp-tool",
+            "freight-processing",
+            "sjo",
+            "sjo-invoice-processing",
+            "sjo-index-processing",
+            "rospbu",
+            "rospbu-invoice-report"
+          ]
+        }
+      },
+      "InvoiceId": {
+        "name": "invoiceId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "INV-GP-1015"
+        }
+      },
+      "UserId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "Search": {
+        "name": "search",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Case-insensitive \"contains\" match"
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "description": "Clamped to the last page"
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 5
+        }
+      }
+    },
+    "responses": {
+      "Error400": {
+        "description": "Invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error401": {
+        "description": "Missing, invalid or expired token",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error403": {
+        "description": "Not allowed for this user / application",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error404": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error409": {
+        "description": "Conflict (duplicate, daily limit, ...)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Invoice id(s) already exist: INV-GP-1015"
+          },
+          "details": {
+            "type": "object"
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ]
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          }
+        }
+      },
+      "PageMeta": {
+        "type": "object",
+        "required": [
+          "totalItems",
+          "totalPages",
+          "page",
+          "limit"
+        ],
+        "properties": {
+          "totalItems": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin@cargill.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "password"
+          },
+          "isAD": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "CurrentUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "user"
+            ]
+          },
+          "assignedApps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "GP",
+              "sjo"
+            ]
+          }
+        }
+      },
+      "LoginResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CurrentUser"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "Application": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "GP"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PdfAttachment": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "mimetype": {
+            "type": "string"
+          }
+        }
+      },
+      "InvoiceListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "INV-GP-1015"
+          },
+          "appId": {
+            "type": "string",
+            "example": "GP"
+          },
+          "receptionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "emailReceptionDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-07-09 09:30 AM"
+          },
+          "invoice1a": {
+            "type": "string",
+            "nullable": true
+          },
+          "invoice2a": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryStation": {
+            "type": "string",
+            "nullable": true,
+            "example": "ARG - Rosario Port"
+          },
+          "vendorName": {
+            "type": "string"
+          },
+          "cuit": {
+            "type": "string",
+            "example": "30-50001234-9"
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 20,
+            "example": "Pending",
+            "description": "A status code from Settings > Configuration > Statuses (GET /lookups); matched case-insensitively"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "15000.00"
+          },
+          "pdfFileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "pdfUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Signed, short-lived URL"
+          },
+          "pdfAttachment": {
+            "$ref": "#/components/schemas/PdfAttachment"
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "Signed, short-lived URL"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "size": {
+            "type": "string",
+            "nullable": true,
+            "example": "245 KB"
+          },
+          "category": {
+            "type": "string",
+            "example": "Invoice Document"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LineItem": {
+        "type": "object",
+        "description": "Spanish keys match the Invoice Overview table",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "nullable": true
+          },
+          "descripcion": {
+            "type": "string",
+            "nullable": true
+          },
+          "cantidad": {
+            "type": "string"
+          },
+          "uMedida": {
+            "type": "string",
+            "nullable": true
+          },
+          "precioUnit": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "15000.00"
+          },
+          "bonif": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "15000.00"
+          },
+          "subtotal": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "15000.00"
+          },
+          "alicuotaIVA": {
+            "type": "string",
+            "example": "21%"
+          },
+          "subtotalConIVA": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "15000.00"
+          }
+        }
+      },
+      "Ccpp": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "producto": {
+            "type": "string"
+          },
+          "emitDocLegal": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "string",
+            "nullable": true
+          },
+          "km": {
+            "type": "string",
+            "nullable": true
+          },
+          "toneladas": {
+            "type": "string",
+            "nullable": true
+          },
+          "tarifaUnitaria": {
+            "type": "string",
+            "nullable": true
+          },
+          "kmFc": {
+            "type": "string",
+            "nullable": true
+          },
+          "toneladasFc": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "InvoiceDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/InvoiceListItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "formattedInvoiceId": {
+                "type": "string",
+                "example": "#IN-GP-1015"
+              },
+              "applicationCode": {
+                "type": "string"
+              },
+              "firstInvoiceNumber": {
+                "type": "string",
+                "nullable": true
+              },
+              "secondInvoiceNumber": {
+                "type": "string",
+                "nullable": true
+              },
+              "vendorLegalName": {
+                "type": "string"
+              },
+              "invoiceDate": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "expiryDays": {
+                "type": "string",
+                "nullable": true,
+                "example": "15 Days"
+              },
+              "invoiceExpiryDate": {
+                "type": "string",
+                "nullable": true,
+                "example": "17/07/2026 18:07"
+              },
+              "supportTeam": {
+                "type": "boolean"
+              },
+              "preSettlementNumber": {
+                "type": "string",
+                "nullable": true
+              },
+              "creditNote": {
+                "type": "boolean"
+              },
+              "invoiceSubtotal": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d{2}$",
+                "example": "15000.00"
+              },
+              "invoiceSubtotalWithTax": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d{2}$",
+                "example": "15000.00",
+                "nullable": true
+              },
+              "invoiceNumber": {
+                "type": "string",
+                "example": "IN-GP-1015"
+              },
+              "emailReceptionDateTime": {
+                "type": "string",
+                "nullable": true,
+                "example": "21/09/2026 12:09"
+              },
+              "process": {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              "origin": {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              "destination": {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              "stage": {
+                "$ref": "#/components/schemas/NamedRef",
+                "description": "Current team (queue)"
+              },
+              "assignedUser": {
+                "$ref": "#/components/schemas/NamedRef"
+              },
+              "claimNumber": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d{2}$",
+                "example": "15000.00"
+              },
+              "additionalInfo": {
+                "type": "string",
+                "nullable": true
+              },
+              "filenetId": {
+                "type": "string",
+                "nullable": true
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              },
+              "lineItems": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LineItem"
+                }
+              },
+              "ccpps": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Ccpp"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PdfAttachmentInfo": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "pdfFileName": {
+            "type": "string"
+          },
+          "pdfUrl": {
+            "type": "string"
+          },
+          "pdfTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "mimetype": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "InvoiceInput": {
+        "type": "object",
+        "required": [
+          "vendorName",
+          "cuit",
+          "amount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Generated as INV-<PREFIX>-nnnnnn when omitted",
+            "example": "INV-GP-8801"
+          },
+          "vendorName": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Molinos Agro S.A."
+          },
+          "cuit": {
+            "type": "string",
+            "pattern": "^\\d{2}-?\\d{8}-?\\d$",
+            "example": "30-50001234-9"
+          },
+          "countryStation": {
+            "type": "string",
+            "nullable": true,
+            "description": "\"CCC - Station Name\"",
+            "example": "ARG - Rosario Port"
+          },
+          "invoice1a": {
+            "type": "string",
+            "nullable": true,
+            "example": "0001-000501"
+          },
+          "invoice2a": {
+            "type": "string",
+            "nullable": true,
+            "example": "0001-000502"
+          },
+          "amount": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "example": "18500.00"
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 20,
+            "example": "Pending",
+            "description": "Case-insensitive",
+            "default": "Pending"
+          },
+          "receptionDate": {
+            "type": "string",
+            "example": "2026-10-21",
+            "description": "YYYY-MM-DD; defaults to today"
+          },
+          "emailReceptionDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-21 10:00 AM"
+          }
+        }
+      },
+      "CreateInvoiceResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "BulkInvoiceRequest": {
+        "type": "object",
+        "required": [
+          "invoices"
+        ],
+        "properties": {
+          "invoices": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "items": {
+              "$ref": "#/components/schemas/InvoiceInput"
+            }
+          }
+        }
+      },
+      "BulkInvoiceResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AppSettings": {
+        "type": "object",
+        "properties": {
+          "enableNotifications": {
+            "type": "boolean"
+          },
+          "maxInvoicesLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Max invoices created per day for the app"
+          }
+        }
+      },
+      "AppSettingsUpdate": {
+        "type": "object",
+        "minProperties": 1,
+        "properties": {
+          "enableNotifications": {
+            "type": "boolean"
+          },
+          "maxInvoicesLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        }
+      },
+      "TeamMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string",
+            "example": "Reception Team"
+          }
+        }
+      },
+      "AppConfigResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageMeta"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "appId": {
+                "type": "string"
+              },
+              "settings": {
+                "$ref": "#/components/schemas/AppSettings"
+              },
+              "teams": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "users": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TeamMember"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AddMemberRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "alias": {
+            "type": "string",
+            "description": "Defaults to the name lower-cased without spaces"
+          },
+          "team": {
+            "type": "string",
+            "default": "Reception Team"
+          }
+        }
+      },
+      "RemoveMembersRequest": {
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "Admin",
+              "User"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Suspended"
+            ]
+          },
+          "authProvider": {
+            "type": "string",
+            "enum": [
+              "LOCAL",
+              "AD"
+            ]
+          },
+          "assignedApps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "GP",
+              "sjo"
+            ]
+          }
+        }
+      },
+      "UserEnvelope": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "username": {
+            "type": "string",
+            "description": "Defaults to the email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "Admin",
+              "User"
+            ],
+            "default": "User",
+            "description": "Case-insensitive"
+          },
+          "authProvider": {
+            "type": "string",
+            "enum": [
+              "LOCAL",
+              "AD"
+            ],
+            "default": "AD"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "description": "Required for LOCAL users"
+          },
+          "assignedApps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "example": [
+              "GP",
+              "sjo"
+            ]
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "minProperties": 1,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "Admin",
+              "User"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Suspended"
+            ]
+          },
+          "assignedApps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Lookups": {
+        "type": "object",
+        "properties": {
+          "vendors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "cuit": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "stations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "statuses": {
+            "type": "array",
+            "description": "Active statuses in workflow order",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "color": {
+                  "$ref": "#/components/schemas/StatusColor"
+                }
+              }
+            }
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "NamedRef": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "InvoiceDetailsInput": {
+        "type": "object",
+        "properties": {
+          "processId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Active process (Configuration > Processes)"
+          },
+          "originCityId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "destinationCityId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "claimNumber": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0
+          },
+          "additionalInfo": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000
+          },
+          "assignedUserId": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "StatusColor": {
+        "type": "string",
+        "enum": [
+          "warning",
+          "info",
+          "success",
+          "danger",
+          "neutral"
+        ],
+        "description": "Status pill style"
+      },
+      "MasterDataEntity": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "example": "states"
+          },
+          "label": {
+            "type": "string",
+            "example": "State"
+          },
+          "parentEntity": {
+            "type": "string",
+            "nullable": true,
+            "example": "countries"
+          },
+          "codeRequired": {
+            "type": "boolean"
+          },
+          "hasColor": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MasterDataItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "parentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true,
+            "description": "Statuses only: warning | info | success | danger | neutral"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "MasterDataOption": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MasterDataInput": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 30,
+            "description": "Required for countries, business units, statuses and processes"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          },
+          "parentId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Required for states (country) and cities (state)"
+          },
+          "color": {
+            "type": "string",
+            "nullable": true,
+            "description": "Statuses only: warning | info | success | danger | neutral"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "MasterDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MasterDataItem"
+          }
+        }
+      }
+    }
+  }
+}

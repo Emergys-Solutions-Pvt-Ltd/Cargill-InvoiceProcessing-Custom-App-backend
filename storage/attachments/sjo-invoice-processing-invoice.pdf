@@ -1,0 +1,80 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /MediaBox [0 0 612 792] /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Length 1421 >>
+stream
+BT
+/F1 18 Tf
+40 740 Td
+(SJO Invoice Processing Document) Tj
+/F2 10 Tf
+0 -22 Td
+(CARGILL CUSTOM APPS - SJO INVOICE PROCESSING APP) Tj
+0 -15 Td
+(Document Status: OFFICIAL VERIFIED INVOICE PREVIEW) Tj
+/F1 11 Tf
+0 -28 Td
+(Invoice Number: INV-SJO-3304) Tj
+0 -16 Td
+(Vendor Legal Name: Cargill Logistics S.R.L.) Tj
+0 -16 Td
+(CUIT / Tax ID: 30-50009876-1) Tj
+0 -16 Td
+(Reception Date: 2026-07-21) Tj
+/F1 12 Tf
+0 -30 Td
+(ITEMIZED BREAKDOWN & CHARGES) Tj
+/F2 10 Tf
+0 -18 Td
+(================================================================================) Tj
+0 -15 Td
+(Description                                       Quantity    Unit Price      Subtotal) Tj
+0 -15 Td
+(================================================================================) Tj
+0 -16 Td
+(Procesamiento de Insumos San Jose          45.00 Tn     $60,000.00      $2,700,000.00) Tj
+0 -16 Td
+(Flete Urbano SJO Hub                       1.00 Trip    $150,100.00     $150,100.00) Tj
+0 -16 Td
+(Seguro de Carga Maritima                   1.00 Ins     $600,000.00     $600,000.00) Tj
+0 -18 Td
+(================================================================================) Tj
+/F1 12 Tf
+0 -24 Td
+(TOTAL INVOICE AMOUNT: USD $3,450,100.00) Tj
+/F2 9 Tf
+0 -35 Td
+(Note: This document is connected directly to the Cargill SJO Invoice Processing App module.) Tj
+0 -14 Td
+(Generated automatically by Cargill Custom Apps Platform. Authorized Signature Attached.) Tj
+ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000326 00000 n 
+0000000396 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1869
+%%EOF
