@@ -46,6 +46,10 @@
     {
       "name": "Configuration",
       "description": "Settings > Configuration master data: countries, states, cities, BUs, teams, statuses, processes"
+    },
+    {
+      "name": "Integrations",
+      "description": "Settings > SAP Configuration: external invoice sources (SAP OData first), credentials, schedules, synchronization jobs (admin only)"
     }
   ],
   "security": [
@@ -1759,6 +1763,1029 @@
           }
         }
       }
+    },
+    "/integrations/providers": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Providers, authentication methods, mapping fields, SAP templates and schedule presets",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationCatalog"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/integrations/monitoring": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Background worker state and in-process sync counters",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/integrations/test-connection": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Test unsaved settings (new integration form); the typed secret is used once and not stored",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntegrationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/integrations": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "List integrations with their synchronization status",
+        "parameters": [
+          {
+            "name": "providerType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "example": "sap-odata"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IntegrationListItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Create an integration (credentials optional, stored encrypted)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntegrationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Integration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "503": {
+            "description": "Credential storage not configured (INTEGRATION_SECRET_KEY)"
+          }
+        }
+      }
+    },
+    "/integrations/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Integration with its extraction profiles (secrets are never returned)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Integration"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Update connection, authentication settings, schedule and profiles; `version` must match",
+        "description": "Changing the authentication method clears the stored credentials. Profiles missing from the list are deleted (their imported invoices are kept).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/IntegrationInput"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "version"
+                    ],
+                    "properties": {
+                      "version": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Integration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Delete the integration and its job history (imported invoices keep their source reference)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/credentials": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        }
+      ],
+      "put": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Set or rotate credentials (write-only)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "secret"
+                ],
+                "properties": {
+                  "secret": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Fields of the auth method, e.g. { \"clientSecret\": \"...\" } or { \"password\": \"...\" }"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Integration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "503": {
+            "description": "Credential storage not configured"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/test-connection": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Authentication, $metadata, entity set / field check and a mapped sample record",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "draft": {
+                    "$ref": "#/components/schemas/IntegrationInput",
+                    "description": "Unsaved values overriding the stored ones (all optional)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/sync": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Queue a manual synchronization",
+        "responses": {
+          "202": {
+            "description": "Queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SyncJob"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409",
+            "description": "A job is already queued or running"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/summary": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Dashboard: last / active job, last success / attempt, next run, totals for a period",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/jobs": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Synchronization history (newest first)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "queued",
+                "running",
+                "succeeded",
+                "partially_succeeded",
+                "failed",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "name": "trigger",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "scheduled",
+                "manual",
+                "retry"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Exclusive"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PageMeta"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/SyncJob"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/jobs/{jobId}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        },
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Job detail with per-profile statistics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/jobs/{jobId}/errors": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        },
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Record- and job-level errors of a job",
+        "parameters": [
+          {
+            "name": "stage",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fetch",
+                "mapping",
+                "validation",
+                "persistence",
+                "review"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PageMeta"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/SyncError"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/jobs/{jobId}/retry": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        },
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Re-run a failed, partially succeeded or cancelled job",
+        "responses": {
+          "202": {
+            "description": "Queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SyncJob"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/jobs/{jobId}/cancel": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        },
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Cancel a queued job, or stop a running one after its current page",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SyncJob"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/integrations/{id}/profiles/{profileId}/reset-cursor": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Integration id"
+        },
+        {
+          "name": "profileId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Full re-sync of one profile from its initial date (no duplicates are created)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3078,6 +4105,723 @@
           },
           "data": {
             "$ref": "#/components/schemas/MasterDataItem"
+          }
+        }
+      },
+      "IntegrationProfileInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "moduleSlug",
+          "invoiceCodeTemplate"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Existing profile id; omit for a new profile"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "General Payments"
+          },
+          "moduleSlug": {
+            "type": "string",
+            "example": "GP",
+            "description": "Target application module (GP, sjo, ...)"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Provider settings. SAP OData: entitySet, select, expand, filters[{field,operator,type,values}], customFilter, orderBy, pageSize, incrementalField, incrementalFieldType, overlapMinutes, maxRecordsPerRun",
+            "example": {
+              "entitySet": "A_SupplierInvoice",
+              "filters": [
+                {
+                  "field": "CompanyCode",
+                  "operator": "in",
+                  "type": "string",
+                  "values": [
+                    "1010"
+                  ]
+                }
+              ],
+              "incrementalField": "LastChangeDateTime"
+            }
+          },
+          "keyFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "CompanyCode",
+              "FiscalYear",
+              "SupplierInvoice"
+            ]
+          },
+          "invoiceCodeTemplate": {
+            "type": "string",
+            "example": "INV-{prefix}-SAP-{SupplierInvoice}-{FiscalYear}"
+          },
+          "fieldMapping": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Invoice field -> { path | constant, transform }",
+            "example": {
+              "vendorName": {
+                "path": "InvoicingPartyName"
+              },
+              "cuit": {
+                "path": "TaxNumber1",
+                "transform": "cuit"
+              }
+            }
+          },
+          "cancellationRule": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "example": {
+              "field": "ReverseDocument",
+              "operator": "notEmpty",
+              "setStatus": "Rejected",
+              "onlyWhenStatusIn": [
+                "Pending"
+              ]
+            }
+          },
+          "defaultStatus": {
+            "type": "string",
+            "default": "Pending"
+          },
+          "initialFrom": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "First incremental run starts here"
+          }
+        }
+      },
+      "IntegrationInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "sourceSystem",
+          "connection",
+          "authType"
+        ],
+        "properties": {
+          "providerType": {
+            "type": "string",
+            "default": "sap-odata"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "environment": {
+            "type": "string",
+            "nullable": true,
+            "example": "Production"
+          },
+          "sourceSystem": {
+            "type": "string",
+            "example": "S4P-100",
+            "description": "Stable id of the source system; part of the invoice uniqueness key"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "connection": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "baseUrl": "https://my-s4.example.com",
+              "servicePath": "/sap/opu/odata/sap/API_SUPPLIERINVOICE_PROCESS_SRV",
+              "odataVersion": "v2",
+              "sapClient": "100",
+              "timeoutMs": 30000,
+              "maxRetries": 3,
+              "defaultPageSize": 500
+            }
+          },
+          "authType": {
+            "type": "string",
+            "enum": [
+              "oauth2-client-credentials",
+              "basic",
+              "api-key",
+              "none"
+            ]
+          },
+          "authSettings": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Non-secret values, e.g. { tokenUrl, clientId, scope }"
+          },
+          "schedule": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "mode": "interval",
+              "intervalMinutes": 15,
+              "timezone": "America/Argentina/Buenos_Aires"
+            }
+          },
+          "autoSyncEnabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "retryPolicy": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "maxAttempts": 3,
+              "baseDelaySeconds": 60,
+              "maxDelaySeconds": 3600
+            }
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntegrationProfileInput"
+            }
+          },
+          "secret": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Create / test only: credentials (encrypted, never returned)"
+          }
+        }
+      },
+      "IntegrationStatus": {
+        "type": "object",
+        "properties": {
+          "lastStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastSuccessAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nextRunAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastJobId": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "Integration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "environment": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceSystem": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "connection": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "authType": {
+            "type": "string"
+          },
+          "authSettings": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "secret": {
+            "type": "object",
+            "properties": {
+              "configured": {
+                "type": "boolean"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
+          "schedule": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "autoSyncEnabled": {
+            "type": "boolean"
+          },
+          "retryPolicy": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/IntegrationStatus"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/IntegrationProfileInput"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cursor": {
+                      "type": "object",
+                      "properties": {
+                        "watermark": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updatedBy": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "IntegrationListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceSystem": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "autoSyncEnabled": {
+            "type": "boolean"
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "moduleSlug": {
+                  "type": "string"
+                },
+                "isActive": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/IntegrationStatus"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "IntegrationCatalog": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "authTypes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "canonicalFields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "transforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schedulePresets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "secretStorageAvailable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ConnectionTestResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "e.g. entitySets, missingFields per profile"
+          }
+        }
+      },
+      "SyncJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "integrationId": {
+            "type": "integer"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "manual",
+              "retry"
+            ]
+          },
+          "requestedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "partially_succeeded",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "attempt": {
+            "type": "integer"
+          },
+          "maxAttempts": {
+            "type": "integer"
+          },
+          "retryOfJobId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "runAfter": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "heartbeatAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelRequested": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "integer",
+            "nullable": true
+          },
+          "records": {
+            "type": "object",
+            "properties": {
+              "fetched": {
+                "type": "integer"
+              },
+              "created": {
+                "type": "integer"
+              },
+              "updated": {
+                "type": "integer"
+              },
+              "unchanged": {
+                "type": "integer"
+              },
+              "rejected": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              }
+            }
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "profileStats": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "errorSummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCount": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "SyncError": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "profileId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "profileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "fetch",
+              "mapping",
+              "validation",
+              "persistence",
+              "review"
+            ]
+          },
+          "externalKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "IntegrationSummary": {
+        "type": "object",
+        "properties": {
+          "integrationId": {
+            "type": "integer"
+          },
+          "lastStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastSuccessAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nextRunAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "autoSyncEnabled": {
+            "type": "boolean"
+          },
+          "lastJob": {
+            "$ref": "#/components/schemas/SyncJob",
+            "nullable": true
+          },
+          "activeJob": {
+            "$ref": "#/components/schemas/SyncJob",
+            "nullable": true
+          },
+          "periodDays": {
+            "type": "integer"
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "jobs": {
+                "type": "integer",
+                "nullable": false
+              },
+              "succeeded": {
+                "type": "integer",
+                "nullable": false
+              },
+              "partial": {
+                "type": "integer",
+                "nullable": false
+              },
+              "failed": {
+                "type": "integer",
+                "nullable": false
+              },
+              "fetched": {
+                "type": "integer",
+                "nullable": false
+              },
+              "created": {
+                "type": "integer",
+                "nullable": false
+              },
+              "updated": {
+                "type": "integer",
+                "nullable": false
+              },
+              "unchanged": {
+                "type": "integer",
+                "nullable": false
+              },
+              "rejected": {
+                "type": "integer",
+                "nullable": false
+              },
+              "failedRecords": {
+                "type": "integer",
+                "nullable": false
+              },
+              "avgDurationMs": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
+          "invoicesImported": {
+            "type": "integer"
           }
         }
       }

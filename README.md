@@ -38,7 +38,8 @@ The spec is maintained by hand in [`src/docs/openapi.ts`](src/docs/openapi.ts); 
    ```
 
 **Docker**: `docker compose up -d --build` in this folder runs the API on :4000 using `.env`
-(`--profile local-db` adds a seeded local PostgreSQL). See [../README.md](../README.md) for the
+(`--profile local-db` adds a seeded local PostgreSQL; `--profile worker` adds dedicated SAP sync
+workers, see [OPERATIONS.md](docs/integrations/OPERATIONS.md)). See [../README.md](../README.md) for the
 full stack with the frontend.
 
 Seeded demo logins (password `password`): `admin@cargill.com` (Admin), `GP.user@cargill.com`,
@@ -57,10 +58,32 @@ src/
   docs/                     OpenAPI document + Swagger UI routes
   middleware/               JWT auth, admin / app-access guards, error handler
   modules/<feature>/        *.routes.ts (HTTP + validation) and *.repository.ts (function calls)
+  integrations/             invoice synchronization framework (SAP OData first), see below
+    core/                   provider contracts, auth strategies, HTTP client, mapping, secrets, schedules, events
+    providers/sap-odata/    SAP OData V2/V4 adapter, connection tester, GP / SJO templates
+    sync/                   orchestrator (sync workflow) + persistence ports
+    jobs/                   scheduler + worker (PostgreSQL job queue)
+    persistence/            PostgreSQL implementations of the ports
+    index.ts                composition root (providers, strategies, worker)
+  worker.ts                 dedicated sync worker process (npm run worker)
   utils/                    pagination, formatting, signed file URLs, validation
-scripts/                    hash-password, export-openapi
+scripts/                    hash-password, export-openapi, mock-sap (local SAP OData mock)
+test/                       node:test suites: unit/, integration/, e2e/ (npm test)
+docs/integrations/          architecture, operations, adding a provider
 storage/attachments/        invoice PDFs referenced by invoice_attachments.storage_path
 ```
+
+## Invoice integrations (SAP)
+
+Settings > SAP Configuration synchronizes supplier invoices from SAP (OData V2 / V4) into General
+Payments and SJO, on a schedule or on demand, through a background worker that never blocks API
+requests. Credentials are encrypted (`INTEGRATION_SECRET_KEY`), every run is recorded with counters
+and record-level errors, and re-runs never create duplicates.
+
+* [Architecture & design](docs/integrations/ARCHITECTURE.md) – components, diagrams, data model, API, decisions
+* [Operations](docs/integrations/OPERATIONS.md) – configuration, worker deployment, key rotation, monitoring, tests
+* [Adding a provider](docs/integrations/ADDING_A_PROVIDER.md) – plug in another ERP / invoice source
+* `npm run mock:sap` – local mock SAP service (OAuth `mock-client` / `mock-secret`) for development
 
 ## Data access
 
@@ -138,7 +161,18 @@ The full contract, with request and response schemas, is in Swagger at `/api/doc
 `:entity` is one of `countries`, `states`, `cities`, `business-units`, `teams`, `statuses`, `processes`.
 Invoice `status` values are the codes configured under Statuses.
 
-`maxInvoicesLimit` is enforced as a per-module daily cap on invoice creation.
+| GET | `/integrations/providers` | SAP Configuration (admin) | Providers, auth methods, mapping fields, GP / SJO templates |
+| GET / POST | `/integrations` | SAP Configuration list / create | Credentials optional on create (encrypted, never returned) |
+| GET / PUT / DELETE | `/integrations/:id` | Integration tabs | PUT needs `version` (409 on concurrent edits) |
+| PUT | `/integrations/:id/credentials` | Authentication tab | Write-only secret rotation |
+| POST | `/integrations/test-connection`, `/integrations/:id/test-connection` | Test connection | Auth, `$metadata`, field check, mapped sample record |
+| POST | `/integrations/:id/sync` | Sync now | 202; 409 while a job is queued / running |
+| GET | `/integrations/:id/summary`, `/jobs`, `/jobs/:jobId`, `/jobs/:jobId/errors` | Dashboard & History | KPIs, history filters, job details, paged errors |
+| POST | `/integrations/:id/jobs/:jobId/retry`, `/cancel` | Dashboard | Retry failed jobs / stop a running one |
+| POST | `/integrations/:id/profiles/:profileId/reset-cursor` | Extraction tab | Full re-sync of one profile |
+
+`maxInvoicesLimit` is enforced as a per-module daily cap on manual invoice creation (Create / Bulk
+Upload); SAP synchronization is not limited by it.
 
 ## Frontend
 

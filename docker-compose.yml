@@ -19,10 +19,31 @@ services:
       PORT: 4000
       # Browser origins allowed to call the API directly (the dev server and the dockerised frontend)
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+      # Invoice sync (SAP) scheduler + worker inside the API; set API_SYNC_WORKER_ENABLED=false when
+      # the dedicated worker below runs (docker compose --profile worker up -d)
+      SYNC_WORKER_ENABLED: ${API_SYNC_WORKER_ENABLED:-true}
     ports:
       - "${API_PORT:-4000}:4000"
     volumes:
       - attachments:/app/storage/attachments
+    restart: unless-stopped
+
+  # Dedicated synchronization worker (same image, no HTTP). Scale with --scale worker=N:
+  # jobs are claimed with FOR UPDATE SKIP LOCKED, so workers never run the same job twice.
+  worker:
+    profiles: [worker]
+    image: cargill-custom-apps-api:latest
+    build:
+      context: .
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      SYNC_WORKER_ENABLED: "true"
+    command: ["node", "dist/worker.js"]
+    # The image's HEALTHCHECK probes /api/health, which the worker (no HTTP) does not serve
+    healthcheck:
+      disable: true
+    stop_grace_period: 30s
     restart: unless-stopped
 
   db:

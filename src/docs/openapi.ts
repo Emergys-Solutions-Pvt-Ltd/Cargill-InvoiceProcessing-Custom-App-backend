@@ -2,6 +2,8 @@
  * OpenAPI 3 description of the REST API, served by Swagger UI at /api/docs and as JSON at
  * /api/docs/openapi.json (?download=1 for a file). Keep in sync with the *.routes.ts files.
  */
+import { integrationPaths, integrationSchemas, integrationTag } from './openapi.integrations.js';
+
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const json = (schema: object, description = 'OK') => ({ description, content: { 'application/json': { schema } } });
 const body = (schema: object, required = true) => ({ required, content: { 'application/json': { schema } } });
@@ -51,6 +53,7 @@ export const openApiDocument = {
     { name: 'Users', description: 'Settings / User Access Management (admin only)' },
     { name: 'Lookups', description: 'Dropdown sources' },
     { name: 'Configuration', description: 'Settings > Configuration master data: countries, states, cities, BUs, teams, statuses, processes' },
+    integrationTag,
   ],
   security: [{ bearerAuth: [] }],
   paths: {
@@ -353,6 +356,7 @@ export const openApiDocument = {
         },
       },
     },
+    ...integrationPaths,
   },
   components: {
     securitySchemes: {
@@ -663,6 +667,7 @@ export const openApiDocument = {
         },
       },
       MasterDataEnvelope: { type: 'object', properties: { message: { type: 'string' }, data: ref('MasterDataItem') } },
+      ...integrationSchemas,
     },
   },
 } as const;

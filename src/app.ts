@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { env } from './config/env.js';
 import { pool } from './db/pool.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, requireAdmin } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import appsRoutes from './modules/apps/apps.routes.js';
@@ -14,6 +14,7 @@ import lookupsRoutes from './modules/lookups/lookups.routes.js';
 import filesRoutes from './modules/files/files.routes.js';
 import docsRoutes from './docs/docs.routes.js';
 import masterDataRoutes from './modules/master-data/master-data.routes.js';
+import integrationsRoutes from './modules/integrations/index.js';
 
 export const createApp = () => {
   const app = express();
@@ -45,6 +46,8 @@ export const createApp = () => {
   app.use('/api/users', authenticate, usersRoutes);
   app.use('/api/lookups', authenticate, lookupsRoutes);
   app.use('/api/master-data', authenticate, masterDataRoutes);
+  // Settings > SAP Configuration: viewing and changing integrations is admin only
+  app.use('/api/integrations', authenticate, requireAdmin, integrationsRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

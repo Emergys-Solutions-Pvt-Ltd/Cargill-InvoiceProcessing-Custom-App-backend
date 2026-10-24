@@ -25,6 +25,21 @@ const envSchema = z.object({
   FILE_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
 
   STORAGE_DIR: z.string().default('storage/attachments'),
+
+  // ---- Invoice integrations (SAP sync) ----
+  /** 32-byte key (base64 or hex) encrypting integration credentials; without it, secrets cannot be stored. */
+  INTEGRATION_SECRET_KEY: z.string().optional(),
+  /** Previous key(s), comma separated, still accepted for decryption during a key rotation. */
+  INTEGRATION_SECRET_KEY_PREVIOUS: z.string().optional(),
+  /** Optional allow-list of SAP / token hosts (exact or *.suffix), comma separated. */
+  INTEGRATION_ALLOWED_HOSTS: z.string().default(''),
+  /** Run the scheduler + worker inside this process (false when a separate `npm run worker` is deployed). */
+  SYNC_WORKER_ENABLED: z.stringbool().default(true),
+  SYNC_POLL_INTERVAL_SECONDS: z.coerce.number().int().min(2).max(300).default(10),
+  SYNC_SCHEDULER_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(600).default(30),
+  /** A running job without heartbeat for this long is considered dead and retried. */
+  SYNC_JOB_STALE_SECONDS: z.coerce.number().int().min(60).max(3_600).default(300),
+  SYNC_HISTORY_RETENTION_DAYS: z.coerce.number().int().min(7).max(3_650).default(90),
 });
 
 const parsed = envSchema
@@ -44,4 +59,6 @@ export const env = {
   corsOrigins: parsed.data.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
   storageRoot: path.resolve(process.cwd(), parsed.data.STORAGE_DIR),
   isProduction: parsed.data.NODE_ENV === 'production',
+  integrationAllowedHosts: parsed.data.INTEGRATION_ALLOWED_HOSTS.split(',').map((h) => h.trim()).filter(Boolean),
+  integrationPreviousKeys: (parsed.data.INTEGRATION_SECRET_KEY_PREVIOUS ?? '').split(',').map((k) => k.trim()).filter(Boolean),
 };
