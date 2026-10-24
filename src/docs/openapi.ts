@@ -454,6 +454,17 @@ export const openApiDocument = {
           kmFc: nullableString, toneladasFc: nullableString,
         },
       },
+      SourceEmail: {
+        type: 'object', description: 'Email the invoice PDF was received through',
+        properties: {
+          id: { type: 'integer' }, messageId: nullableString, fromName: nullableString,
+          fromAddress: { type: 'string', example: 'facturacion@molinosagro.example' },
+          to: { type: 'array', items: { type: 'string' } }, cc: { type: 'array', items: { type: 'string' } },
+          subject: { type: 'string' }, body: { type: 'string', description: 'Plain text' },
+          receivedAt: { ...nullableString, example: '09/07/2026 09:30' },
+          attachments: { type: 'array', items: ref('Attachment') },
+        },
+      },
       InvoiceDetail: {
         allOf: [
           ref('InvoiceListItem'),
@@ -477,6 +488,7 @@ export const openApiDocument = {
               attachments: { type: 'array', items: ref('Attachment') },
               lineItems: { type: 'array', items: ref('LineItem') },
               ccpps: { type: 'array', items: ref('Ccpp') },
+              sourceEmail: { ...ref('SourceEmail'), nullable: true } as object,
             },
           },
         ],

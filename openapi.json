@@ -2246,6 +2246,57 @@
           }
         }
       },
+      "SourceEmail": {
+        "type": "object",
+        "description": "Email the invoice PDF was received through",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "messageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "fromName": {
+            "type": "string",
+            "nullable": true
+          },
+          "fromAddress": {
+            "type": "string",
+            "example": "facturacion@molinosagro.example"
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cc": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "description": "Plain text"
+          },
+          "receivedAt": {
+            "type": "string",
+            "nullable": true,
+            "example": "09/07/2026 09:30"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          }
+        }
+      },
       "InvoiceDetail": {
         "allOf": [
           {
@@ -2363,6 +2414,10 @@
                 "items": {
                   "$ref": "#/components/schemas/Ccpp"
                 }
+              },
+              "sourceEmail": {
+                "$ref": "#/components/schemas/SourceEmail",
+                "nullable": true
               }
             }
           }

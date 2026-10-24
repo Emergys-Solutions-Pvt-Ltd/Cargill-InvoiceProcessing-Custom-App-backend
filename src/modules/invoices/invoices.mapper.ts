@@ -1,6 +1,6 @@
 import { signedAttachmentUrl } from '../../utils/fileUrl.js';
 import { toDayFirstDateTime, toDisplayDateTime, toIsoDate, toMoney, toNumberString } from '../../utils/format.js';
-import type { AttachmentRow, CcppRow, InvoiceRow, LineItemRow } from './invoices.repository.js';
+import type { AttachmentRow, CcppRow, InvoiceRow, LineItemRow, SourceEmailRow } from './invoices.repository.js';
 
 const formatSize = (bytes: number | null) => {
   if (bytes === null) return null;
@@ -52,6 +52,23 @@ export const toAttachment = (att: AttachmentRow) => ({
   uploadedAt: toDisplayDateTime(att.uploadedAt),
 });
 
+const splitAddresses = (value: string | null) =>
+  (value ?? '').split(',').map((a) => a.trim()).filter(Boolean);
+
+/** Email the invoice PDF was received through (Invoice Details > PDF preview > Email). */
+export const toSourceEmail = (email: SourceEmailRow) => ({
+  id: email.id,
+  messageId: email.messageId,
+  fromName: email.fromName,
+  fromAddress: email.fromAddress,
+  to: splitAddresses(email.toAddresses),
+  cc: splitAddresses(email.ccAddresses),
+  subject: email.subject,
+  body: email.bodyText ?? '',
+  receivedAt: toDayFirstDateTime(email.receivedAt),
+  attachments: email.attachments.map(toAttachment),
+});
+
 /** Spanish keys are what the Invoice Overview line-item table renders. */
 export const toLineItem = (item: LineItemRow) => ({
   codigo: item.code,
@@ -80,7 +97,7 @@ export const toCcpp = (c: CcppRow) => ({
 
 export const toInvoiceDetail = (
   row: InvoiceRow,
-  children: { attachments: AttachmentRow[]; lineItems: LineItemRow[]; ccpps: CcppRow[] },
+  children: { attachments: AttachmentRow[]; lineItems: LineItemRow[]; ccpps: CcppRow[]; sourceEmail: SourceEmailRow | null },
 ) => {
   const codePrefix = `INV-${row.invoicePrefix}-`;
   const suffix = row.invoiceCode.toUpperCase().startsWith(codePrefix.toUpperCase())
@@ -115,5 +132,6 @@ export const toInvoiceDetail = (
     attachments: children.attachments.map(toAttachment),
     lineItems: children.lineItems.map(toLineItem),
     ccpps: children.ccpps.map(toCcpp),
+    sourceEmail: children.sourceEmail ? toSourceEmail(children.sourceEmail) : null,
   };
 };

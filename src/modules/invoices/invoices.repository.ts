@@ -88,11 +88,26 @@ export interface CcppRow {
   tonsFc: number | null;
 }
 
+/** The email the invoice PDF was received through (app.invoice_source_emails). */
+export interface SourceEmailRow {
+  id: number;
+  messageId: string | null;
+  fromName: string | null;
+  fromAddress: string;
+  toAddresses: string;
+  ccAddresses: string | null;
+  subject: string;
+  bodyText: string | null;
+  receivedAt: Date;
+  attachments: AttachmentRow[];
+}
+
 export interface InvoiceDetail {
   invoice: InvoiceRow;
   attachments: AttachmentRow[];
   lineItems: LineItemRow[];
   ccpps: CcppRow[];
+  sourceEmail: SourceEmailRow | null;
 }
 
 // ---- Function result shapes (app.udt_*_result) ----
@@ -164,6 +179,19 @@ interface AttachmentResult {
   is_primary: boolean;
   uploaded_at: DbDate;
   application_code: string;
+}
+
+interface InvoiceEmailResult {
+  id: number;
+  message_id: string | null;
+  from_name: string | null;
+  from_address: string;
+  to_addresses: string;
+  cc_addresses: string | null;
+  subject: string;
+  body_text: string | null;
+  received_at: DbDate;
+  attachments: AttachmentResult[];
 }
 
 interface LineItemResult {
@@ -250,6 +278,19 @@ const toAttachment = (r: AttachmentResult): AttachmentRow => ({
   applicationCode: r.application_code,
 });
 
+const toSourceEmail = (r: InvoiceEmailResult): SourceEmailRow => ({
+  id: r.id,
+  messageId: r.message_id,
+  fromName: r.from_name,
+  fromAddress: r.from_address,
+  toAddresses: r.to_addresses,
+  ccAddresses: r.cc_addresses,
+  subject: r.subject,
+  bodyText: r.body_text,
+  receivedAt: toDate(r.received_at)!,
+  attachments: r.attachments.map(toAttachment),
+});
+
 const toLineItem = (r: LineItemResult): LineItemRow => ({
   lineNo: r.line_no,
   code: r.code,
@@ -295,7 +336,7 @@ export const listInvoices = async (moduleId: number, f: InvoiceListFilters) => {
   return { rows: rows.map((r) => toInvoice(r.invoice)), ...toPageMeta(rows[0], f.limit) };
 };
 
-/** Header, attachments (primary first), line items and CCPPs in one round trip. */
+/** Header, attachments (primary first), line items, CCPPs and source email in one round trip. */
 export const getInvoiceDetail = async (code: string): Promise<InvoiceDetail | null> => {
   // app.udt_invoice_detail_result: each column is jsonb built from the typed rows
   const [row] = await callFunction<{
@@ -303,6 +344,7 @@ export const getInvoiceDetail = async (code: string): Promise<InvoiceDetail | nu
     attachments: AttachmentResult[];
     line_items: LineItemResult[];
     ccpps: CcppResult[];
+    source_email: InvoiceEmailResult | null;
   }>('usp_invoice_get_by_code', { p_invoice_code: code });
   if (!row) return null;
   return {
@@ -310,6 +352,7 @@ export const getInvoiceDetail = async (code: string): Promise<InvoiceDetail | nu
     attachments: row.attachments.map(toAttachment),
     lineItems: row.line_items.map(toLineItem),
     ccpps: row.ccpps.map(toCcpp),
+    sourceEmail: row.source_email ? toSourceEmail(row.source_email) : null,
   };
 };
 
