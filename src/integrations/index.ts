@@ -12,7 +12,8 @@ import { SyncWorker } from './jobs/sync-worker.js';
 import { PgJobQueue, PgSyncStore } from './persistence/pg-sync-store.js';
 import { onbaseProvider } from './providers/onbase/onbase.provider.js';
 import { sapODataProvider } from './providers/sap-odata/sap-odata.provider.js';
-import { FsAttachmentStore } from './persistence/fs-attachment-store.js';
+import { StorageAttachmentStore } from './persistence/storage-attachment-store.js';
+import { attachmentStorage } from '../storage/index.js';
 import { SyncOrchestrator } from './sync/sync-orchestrator.js';
 
 /**
@@ -51,8 +52,8 @@ export const syncStore = new PgSyncStore();
 export const jobQueue = new PgJobQueue();
 export const contextFactory = new ProviderContextFactory({ providers, authStrategies, secrets, logger });
 
-// ECM providers (OnBase) attach the source document; stored next to uploaded PDFs
-export const attachmentStore = new FsAttachmentStore(env.storageRoot);
+// ECM providers (OnBase) attach the source document through the attachment storage service (S3 / local)
+export const attachmentStore = new StorageAttachmentStore(attachmentStorage);
 
 const orchestrator = new SyncOrchestrator({
   store: syncStore,

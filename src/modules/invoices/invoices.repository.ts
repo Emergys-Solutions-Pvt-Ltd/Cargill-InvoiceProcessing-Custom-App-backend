@@ -66,6 +66,10 @@ export interface AttachmentRow {
   uploadedAt: Date;
   invoiceId: number;
   applicationCode: string;
+  /** Where the file lives: 'local' (below STORAGE_DIR) or 's3' (storageBucket / key storagePath). */
+  storageProvider: 'local' | 's3';
+  storageBucket: string | null;
+  contentSha256: string | null;
 }
 
 export interface LineItemRow {
@@ -321,6 +325,9 @@ interface AttachmentResult {
   is_primary: boolean;
   uploaded_at: DbDate;
   application_code: string;
+  storage_provider: 'local' | 's3' | null;
+  storage_bucket: string | null;
+  content_sha256: string | null;
 }
 
 // app.udt_invoice_sf_fields_result (NULL until app.invoice_sf_fields has a row for this invoice)
@@ -548,6 +555,9 @@ const toAttachment = (r: AttachmentResult): AttachmentRow => ({
   isPrimary: r.is_primary,
   uploadedAt: toDate(r.uploaded_at)!,
   applicationCode: r.application_code,
+  storageProvider: r.storage_provider ?? 'local',
+  storageBucket: r.storage_bucket ?? null,
+  contentSha256: r.content_sha256 ? r.content_sha256.trim() : null,
 });
 
 const toSfFields = (r: SfFieldsResult): SfFieldsRow => ({
@@ -816,6 +826,10 @@ export interface NewAttachment {
   sizeBytes: number;
   storagePath: string;
   isPrimary: boolean;
+  storageProvider?: 'local' | 's3';
+  storageBucket?: string | null;
+  contentSha256?: string | null;
+  storageEtag?: string | null;
 }
 
 /** Registers an already stored file. Raises CA404 when the invoice does not exist. */
@@ -830,8 +844,40 @@ export const addAttachment = async (code: string, file: NewAttachment): Promise<
       p_size_bytes: file.sizeBytes,
       p_storage_path: file.storagePath,
       p_is_primary: file.isPrimary,
+      p_storage_provider: file.storageProvider ?? 'local',
+      p_storage_bucket: file.storageBucket ?? null,
+      p_content_sha256: file.contentSha256 ?? null,
+      p_storage_etag: file.storageEtag ?? null,
     }),
   );
+
+/** Application code (GP, sjo, rospbu) of an invoice - decides the storage folder. Null = not found. */
+export const findInvoiceApplicationCode = async (code: string): Promise<string | null> => {
+  const [row] = await callFunction<{ code: string }>('usp_attachment_storage_context', { p_invoice_code: code });
+  return row?.code ?? null;
+};
+
+/** Attachments stored with one provider, by id (keyset paging) - used by the S3 migration. */
+export const listAttachmentsByProvider = async (provider: 'local' | 's3', afterId: number, limit: number): Promise<AttachmentRow[]> =>
+  (await callFunction<AttachmentResult>('usp_attachment_list_by_provider', { p_storage_provider: provider, p_after_id: afterId, p_limit: limit })).map(toAttachment);
+
+/** Repoints an attachment at its new location; false when it had already moved. */
+export const moveAttachmentStorage = async (
+  id: number,
+  expectedProvider: 'local' | 's3',
+  target: { provider: 'local' | 's3'; bucket: string | null; path: string; sha256: string | null; etag: string | null },
+): Promise<boolean> => {
+  const row = await callFunctionSingle<{ rows_affected: number }>('usp_attachment_set_storage', {
+    p_attachment_id: id,
+    p_expected_provider: expectedProvider,
+    p_storage_provider: target.provider,
+    p_storage_bucket: target.bucket,
+    p_storage_path: target.path,
+    p_content_sha256: target.sha256,
+    p_storage_etag: target.etag,
+  });
+  return row.rows_affected > 0;
+};
 
 /** GP Invoice Detail "CCPP" tab: all CCPP rows for an invoice. Raises CA404 when the invoice does not exist. */
 export const listCcpps = async (code: string): Promise<CcppRow[]> => {

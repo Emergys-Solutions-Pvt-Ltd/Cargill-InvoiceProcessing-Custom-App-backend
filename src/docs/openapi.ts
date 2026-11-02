@@ -59,7 +59,7 @@ export const openApiDocument = {
   paths: {
     '/health': {
       get: {
-        tags: ['System'], summary: 'Service and database health', security: [],
+        tags: ['System'], summary: 'Service, database and attachment storage health', security: [],
         responses: {
           200: json(ref('Health')),
           503: json(ref('Health'), 'Database unreachable'),
@@ -420,7 +420,15 @@ export const openApiDocument = {
       },
       Health: {
         type: 'object',
-        properties: { status: { type: 'string', enum: ['ok', 'degraded'] }, database: { type: 'string', enum: ['up', 'down'] } },
+        properties: {
+          status: { type: 'string', enum: ['ok', 'degraded'] },
+          database: { type: 'string', enum: ['up', 'down'] },
+          storage: {
+            type: 'object',
+            description: 'Attachment storage (S3 HeadBucket / local folder), checked at most every 30 s',
+            properties: { provider: { type: 'string', enum: ['local', 's3'] }, status: { type: 'string', enum: ['up', 'down'] } },
+          },
+        },
       },
       PageMeta: {
         type: 'object', required: ['totalItems', 'totalPages', 'page', 'limit'],

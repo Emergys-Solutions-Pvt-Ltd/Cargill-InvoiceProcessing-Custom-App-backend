@@ -70,8 +70,18 @@ src/
 scripts/                    hash-password, export-openapi, mock-sap (local SAP OData mock)
 test/                       node:test suites: unit/, integration/, e2e/ (npm test)
 docs/integrations/          architecture, operations, adding a provider
-storage/attachments/        invoice PDFs referenced by invoice_attachments.storage_path
+  storage/                  attachment storage service: S3 / local, layout, retries (docs/STORAGE.md)
+storage/attachments/        local attachment files (STORAGE_PROVIDER=local, and files from before S3)
 ```
+
+## Attachment storage (S3)
+
+Invoice files go through one service (`src/storage`): S3 bucket (`STORAGE_PROVIDER=s3`) or local
+disk, laid out as `<App>/<YYYY>/<Mon>/<file name>` (e.g. `GPP/2026/Nov/Invoice-123.pdf`), never
+overwritten, registered in `app.invoice_attachments` with bucket, key and SHA-256. Connection,
+credentials (IAM role or keys), timeouts, retries and error handling live in that service.
+See [docs/STORAGE.md](docs/STORAGE.md); `npm run mock:s3` for local development,
+`npm run storage:migrate-to-s3` to move existing local files.
 
 ## Invoice integrations (SAP)
 

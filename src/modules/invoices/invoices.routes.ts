@@ -1,16 +1,13 @@
-import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
-import { env } from '../../config/env.js';
 import { hasAppAccess } from '../../middleware/auth.js';
+import { attachmentStorage } from '../../storage/index.js';
 import { HttpError } from '../../utils/httpError.js';
 import { signedAttachmentUrl } from '../../utils/fileUrl.js';
 import { toDisplayDateTime } from '../../utils/format.js';
 import { parse } from '../../utils/validate.js';
 import {
-  addAttachment,
   getInvoiceDetail,
   listCcpps,
   saveCcpp,
@@ -102,7 +99,8 @@ const uploadQuery = z.object({
 
 /**
  * POST /api/invoices/:invoiceId/attachments?fileName=scan.pdf[&title=&primary=true]
- * Body: the raw PDF (Content-Type: application/pdf, max 20 MB). Stored under STORAGE_DIR/uploads.
+ * Body: the raw PDF (Content-Type: application/pdf, max 20 MB). Stored by the attachment storage
+ * service (S3 or local) under <App>/<YYYY>/<Mon>/<file name> and registered as an attachment.
  */
 router.post(
   '/:invoiceId/attachments',
@@ -116,27 +114,16 @@ router.post(
     }
     if (body.subarray(0, 5).toString('latin1') !== '%PDF-') throw HttpError.badRequest('The file is not a PDF');
 
-    // Random file name on disk; the original name is only kept as metadata
-    const storagePath = `uploads/${crypto.randomUUID()}.pdf`;
-    const target = path.join(env.storageRoot, storagePath);
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    await fs.writeFile(target, body);
-
-    try {
-      const attachment = await addAttachment(invoice.invoiceCode, {
-        fileName: path.basename(fileName),
-        title: title || null,
-        category: 'Uploaded Document',
-        mimeType: 'application/pdf',
-        sizeBytes: body.length,
-        storagePath,
-        isPrimary: primary,
-      });
-      res.status(201).json({ message: `${attachment.fileName} uploaded`, data: toAttachment(attachment) });
-    } catch (err) {
-      await fs.rm(target, { force: true });
-      throw err;
-    }
+    const attachment = await attachmentStorage.store({
+      invoiceCode: invoice.invoiceCode,
+      fileName: path.basename(fileName),
+      title: title || null,
+      category: 'Uploaded Document',
+      mimeType: 'application/pdf',
+      isPrimary: primary,
+      content: body,
+    });
+    res.status(201).json({ message: `${attachment.fileName} uploaded`, data: toAttachment(attachment) });
   },
 );
 

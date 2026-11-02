@@ -1,6 +1,18 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { HttpError } from '../utils/httpError.js';
 import { env } from '../config/env.js';
+import { StorageError, type StorageErrorCode } from '../storage/file-storage.js';
+
+const STORAGE_ERROR_STATUS: Record<StorageErrorCode, number> = {
+  NOT_FOUND: 404,
+  INVALID_RANGE: 416,
+  TOO_LARGE: 413,
+  ACCESS_DENIED: 503,
+  CONFIG: 503,
+  UNAVAILABLE: 503,
+  TIMEOUT: 503,
+  FAILED: 500,
+};
 
 // app.usp_* functions RAISE with SQLSTATE 'CA' + HTTP status (see database/postgres/README.md)
 const FUNCTION_ERROR_STATUS: Record<string, number> = { CA400: 400, CA404: 404, CA409: 409 };
@@ -16,6 +28,16 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof HttpError) {
     res.status(err.status).json({ message: err.message, details: err.details });
+    return;
+  }
+
+  if (err instanceof StorageError) {
+    const status = STORAGE_ERROR_STATUS[err.code] ?? 500;
+    // Storage-side problems (credentials, bucket, outage) are for operators, not end users
+    if (status >= 500) console.error(`Attachment storage error (${err.code}): ${err.message}`);
+    res.status(status).json({
+      message: status >= 500 ? 'The file storage is temporarily unavailable. Please try again.' : err.message,
+    });
     return;
   }
 
