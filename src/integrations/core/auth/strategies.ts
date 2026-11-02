@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { IntegrationError } from '../errors.js';
 import type { AuthStrategy, AuthStrategyFactory } from './auth-strategy.js';
+import { hylandIdpPassword } from './hyland-idp.js';
 
 /** Header names allowed for API keys / custom headers (RFC 7230 token, no hop-by-hop headers). */
 const HEADER_NAME = z
@@ -191,4 +192,4 @@ export const oauth2ClientCredentials: AuthStrategyFactory<z.infer<typeof oauthSe
   },
 };
 
-export const builtInAuthStrategies = [noAuth, basicAuth, apiKeyAuth, oauth2ClientCredentials] as const;
+export const builtInAuthStrategies = [noAuth, basicAuth, apiKeyAuth, oauth2ClientCredentials, hylandIdpPassword] as const;

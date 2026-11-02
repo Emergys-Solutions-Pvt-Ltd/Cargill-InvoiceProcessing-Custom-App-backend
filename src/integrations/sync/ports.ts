@@ -1,3 +1,4 @@
+import type { SourceDocument } from '../core/contracts.js';
 import type { CanonicalInvoice } from '../core/mapping/field-mapper.js';
 
 /**
@@ -153,6 +154,14 @@ export interface JobQueue {
   dueIntegrations(limit: number): Promise<IntegrationRecord[]>;
   setNextRun(integrationId: number, nextRunAt: Date | null): Promise<void>;
   purgeHistory(keepDays: number): Promise<number>;
+}
+
+/** Stores source documents (e.g. OnBase PDFs) as invoice attachments. */
+export interface AttachmentStore {
+  /** Invoice codes (of those given) that have no attachment yet. */
+  withoutAttachment(invoiceCodes: string[]): Promise<Set<string>>;
+  /** Saves the file and registers it as the invoice's primary attachment. */
+  save(invoiceCode: string, document: SourceDocument, sourceKey: string): Promise<void>;
 }
 
 /** Raised by the queue when the database reports a conflict (e.g. a job is already active). */

@@ -6,10 +6,11 @@ import type { ConfigDependencies } from '../../src/integrations/core/integration
 import { silentLogger } from '../../src/integrations/core/logger.js';
 import { ProviderRegistry } from '../../src/integrations/core/provider-registry.js';
 import { AesGcmSecretStore } from '../../src/integrations/core/secrets/secret-store.js';
-import type { IntegrationProvider } from '../../src/integrations/core/contracts.js';
+import type { IntegrationProvider, SourceDocument } from '../../src/integrations/core/contracts.js';
 import { SyncOrchestrator } from '../../src/integrations/sync/sync-orchestrator.js';
 import {
   QueueConflictError,
+  type AttachmentStore,
   type EnqueueRequest,
   type IntegrationRecord,
   type JobQueue,
@@ -263,7 +264,25 @@ export const testConfigDeps = (providers: ProviderRegistry): ConfigDependencies 
 };
 
 /** Orchestrator wired with in-memory persistence and the given providers (no sleeping on retries). */
-export const createTestOrchestrator = (store: SyncStore, ...extraProviders: IntegrationProvider[]) => {
+/** Records attached documents in memory (orchestrator document step). */
+export class InMemoryAttachmentStore implements AttachmentStore {
+  readonly saved = new Map<string, SourceDocument & { sourceKey: string }>();
+  failFor = new Set<string>();
+
+  async withoutAttachment(codes: string[]) {
+    return new Set(codes.filter((c) => !this.saved.has(c)));
+  }
+
+  async save(invoiceCode: string, document: SourceDocument, sourceKey: string) {
+    if (this.failFor.has(invoiceCode)) throw new Error('disk full');
+    this.saved.set(invoiceCode, { ...document, sourceKey });
+  }
+}
+
+export const createTestOrchestrator = (store: SyncStore, ...extraProviders: IntegrationProvider[]) =>
+  createTestOrchestratorWith(store, null, ...extraProviders);
+
+export const createTestOrchestratorWith = (store: SyncStore, attachments: AttachmentStore | null, ...extraProviders: IntegrationProvider[]) => {
   const providers = new ProviderRegistry();
   for (const p of extraProviders) providers.register(p);
   const config = testConfigDeps(providers);
@@ -275,7 +294,12 @@ export const createTestOrchestrator = (store: SyncStore, ...extraProviders: Inte
     logger: silentLogger,
     sleep: async () => {},
   });
-  return { orchestrator: new SyncOrchestrator({ store, contexts, config, events, logger: silentLogger }), events, providers, config };
+  return {
+    orchestrator: new SyncOrchestrator({ store, attachments: attachments ?? undefined, contexts, config, events, logger: silentLogger }),
+    events,
+    providers,
+    config,
+  };
 };
 
 export const control = (overrides: Partial<{ cancelAfter: number; signal: AbortSignal }> = {}) => {

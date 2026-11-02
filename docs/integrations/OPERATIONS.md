@@ -78,6 +78,8 @@ request and is put back in the queue; it resumes from the last saved page.
 6. **Schedule** – enable automatic sync (every 15 min / hourly / daily / cron, time zone) and the
    retry policy. **Sync now** runs a manual job.
 
+OnBase: see [ONBASE.md](ONBASE.md) (Settings > OnBase Configuration, Hyland IdP sign-in, document types + keywords, PDF attachment).
+
 ## 5. Monitoring
 
 * **Dashboard & History** tab: KPIs, active job progress, history with filters, per-job / per-profile
@@ -99,7 +101,9 @@ request and is put back in the queue; it resumes from the last saved page.
 | failed | a profile could not be extracted (network, SAP down, auth, bad query) | yes, if the cause is transient |
 | cancelled | stopped by an administrator; saved pages are kept | no |
 
-## 6. Local development without SAP
+## 6. Local development without SAP / OnBase
+
+`npm run mock:onbase` starts a mock Hyland IdP + API Server on :4020 (settings in [ONBASE.md](ONBASE.md)).
 
 ```bash
 npm run mock:sap      # http://localhost:4010, OAuth client mock-client / mock-secret

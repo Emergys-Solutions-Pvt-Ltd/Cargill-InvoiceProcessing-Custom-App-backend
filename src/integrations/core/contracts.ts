@@ -77,6 +77,25 @@ export interface InvoiceExtractor {
   isIncremental(profile: ProfileConfig): boolean;
 }
 
+// ---------------------------------------------------------------- source documents (ECM providers)
+
+export interface SourceDocument {
+  fileName: string;
+  mimeType: string;
+  content: Buffer;
+  title: string | null;
+}
+
+/**
+ * Optional capability (ISP): providers whose records have a document behind them (OnBase, other
+ * ECM systems) can supply it, and the orchestrator attaches it to the imported invoice.
+ */
+export interface DocumentFetcher {
+  /** Whether documents should be attached for this profile. */
+  isEnabled(profile: ProfileConfig): boolean;
+  fetch(record: SourceRecord, profile: ProfileConfig, signal: AbortSignal): Promise<SourceDocument>;
+}
+
 // ---------------------------------------------------------------- connection test
 
 export interface ConnectionTestStep {
@@ -143,4 +162,6 @@ export interface IntegrationProvider {
   requestOptions(connection: Record<string, unknown>): RequestOptions;
   createExtractor(context: ProviderContext): InvoiceExtractor;
   createConnectionTester(context: ProviderContext): ConnectionTester;
+  /** Only for providers that store documents (ECM). */
+  createDocumentFetcher?(context: ProviderContext): DocumentFetcher;
 }

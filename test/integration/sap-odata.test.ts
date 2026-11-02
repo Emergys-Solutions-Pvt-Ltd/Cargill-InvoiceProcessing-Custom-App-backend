@@ -169,6 +169,6 @@ describe('SAP OData provider (mock SAP service)', () => {
   it('auth registry exposes every built-in method', () => {
     const registry = new AuthStrategyRegistry();
     for (const s of builtInAuthStrategies) registry.register(s);
-    assert.deepEqual(registry.list().map((s) => s.type), ['none', 'basic', 'api-key', 'oauth2-client-credentials']);
+    assert.deepEqual(registry.list().map((s) => s.type), ['none', 'basic', 'api-key', 'oauth2-client-credentials', 'hyland-idp-password']);
   });
 });

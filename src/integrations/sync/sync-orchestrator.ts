@@ -1,12 +1,12 @@
 import type { ConfigDependencies } from '../core/integration-config.js';
 import { resolveIntegrationConfig } from '../core/integration-config.js';
-import type { InvoiceExtractor, IntegrationConfig, ProfileConfig } from '../core/contracts.js';
+import type { DocumentFetcher, InvoiceExtractor, IntegrationConfig, ProfileConfig } from '../core/contracts.js';
 import type { ProviderContextFactory } from '../core/context-factory.js';
 import { IntegrationError, errorMessage, isIntegrationError } from '../core/errors.js';
 import type { PageCounters, SyncEvents } from '../core/events.js';
 import { mapRecord } from '../core/mapping/field-mapper.js';
 import type { Logger } from '../core/logger.js';
-import type { JobRecord, PageRow, SyncErrorInput, SyncStore } from './ports.js';
+import type { AttachmentStore, JobRecord, PageRow, RowOutcome, SyncErrorInput, SyncStore } from './ports.js';
 
 /**
  * Synchronization workflow (Template Method): the steps and their order are fixed here and are
@@ -42,6 +42,8 @@ export interface RunControl {
 
 export interface OrchestratorDependencies {
   store: SyncStore;
+  /** Needed only by providers that supply documents (ECM, e.g. OnBase). */
+  attachments?: AttachmentStore;
   contexts: ProviderContextFactory;
   config: ConfigDependencies;
   events: SyncEvents;
@@ -68,11 +70,13 @@ export class SyncOrchestrator {
       const sealed = await this.deps.store.loadSecret(job.integrationId);
       const { provider, context } = this.deps.contexts.create(config, sealed);
       const extractor = provider.createExtractor(context);
+      const documents = provider.createDocumentFetcher?.(context) ?? null;
+      const docCounters = { attached: 0, failed: 0 };
 
       const failures: IntegrationError[] = [];
       for (const profile of config.profiles.filter((p) => p.isActive)) {
         try {
-          await this.runProfile(job, profile, extractor, control, counters, ref);
+          await this.runProfile(job, profile, extractor, control, counters, ref, documents, docCounters);
           this.deps.events.emit('profile.finished', { ...ref, profileId: profile.id, ok: true });
         } catch (err) {
           if (control.signal.aborted || (isIntegrationError(err) && err.code === 'CANCELLED')) throw err;
@@ -92,10 +96,14 @@ export class SyncOrchestrator {
           retryable: failures.some((f) => f.retryable),
           counters,
         };
-      } else if (counters.rejected + counters.failed > 0) {
+      } else if (counters.rejected + counters.failed + docCounters.failed > 0) {
         outcome = {
           status: 'partially_succeeded',
-          summary: `${counters.rejected} record(s) rejected, ${counters.failed} failed to save. See the error details.`,
+          summary: [
+            counters.rejected + counters.failed > 0 ? `${counters.rejected} record(s) rejected, ${counters.failed} failed to save.` : '',
+            docCounters.failed > 0 ? `${docCounters.failed} document(s) could not be attached (retried next run).` : '',
+            'See the error details.',
+          ].filter(Boolean).join(' '),
           retryable: false,
           counters,
         };
@@ -119,6 +127,41 @@ export class SyncOrchestrator {
     return outcome;
   }
 
+  /**
+   * Attaches the source document (e.g. the OnBase PDF) to saved invoices that have no attachment yet.
+   * A failure keeps the invoice, records an error and is retried on the next run (the invoice still
+   * has no attachment then).
+   */
+  private async attachDocuments(
+    job: JobRecord,
+    profile: ProfileConfig,
+    records: Record<string, unknown>[],
+    outcomes: RowOutcome[],
+    documents: DocumentFetcher,
+    control: RunControl,
+    docCounters: { attached: number; failed: number },
+  ) {
+    const store = this.deps.attachments;
+    if (!store) return;
+    const saved = outcomes.filter((o) => o.invoiceCode && ['created', 'updated', 'unchanged'].includes(o.outcome));
+    if (saved.length === 0) return;
+    const missing = await store.withoutAttachment(saved.map((o) => o.invoiceCode!));
+    for (const o of saved.filter((x) => missing.has(x.invoiceCode!))) {
+      if (control.signal.aborted) throw IntegrationError.cancelled();
+      try {
+        const document = await documents.fetch(records[o.rowNo - 1], profile, control.signal);
+        await store.save(o.invoiceCode!, document, o.externalKey);
+        docCounters.attached += 1;
+      } catch (err) {
+        if (control.signal.aborted || (isIntegrationError(err) && err.code === 'CANCELLED')) throw err;
+        docCounters.failed += 1;
+        await this.deps.store.addErrors(job.id, profile.id, [
+          { externalKey: o.externalKey, stage: 'fetch', message: `Document not attached: ${errorMessage(err)}`.slice(0, 1900), details: { invoiceCode: o.invoiceCode } },
+        ]);
+      }
+    }
+  }
+
   private async loadConfig(integrationId: number): Promise<IntegrationConfig> {
     const record = await this.deps.store.loadIntegration(integrationId);
     if (!record) throw IntegrationError.config('The integration no longer exists');
@@ -135,6 +178,8 @@ export class SyncOrchestrator {
     control: RunControl,
     counters: PageCounters,
     ref: { jobId: number; integrationId: number },
+    documents: DocumentFetcher | null = null,
+    docCounters = { attached: 0, failed: 0 },
   ) {
     const incremental = extractor.isIncremental(profile);
     const since = incremental ? (profile.watermark ?? profile.initialFrom) : profile.initialFrom;
@@ -177,6 +222,10 @@ export class SyncOrchestrator {
       if (pageCounters.failed > 0) advanceCursor = false;
       for (const key of Object.keys(counters) as (keyof PageCounters)[]) counters[key] += pageCounters[key];
       this.deps.events.emit('page.processed', { ...ref, profileId: profile.id, pageNumber: page.pageNumber, counters: pageCounters });
+
+      if (documents?.isEnabled(profile)) {
+        await this.attachDocuments(job, profile, page.records, outcomes, documents, control, docCounters);
+      }
 
       const { cancelRequested } = await control.heartbeat();
       if (cancelRequested) throw IntegrationError.cancelled();

@@ -18,6 +18,8 @@ export interface RequestAuthorizer {
   invalidate(): void;
   /** Secret values to mask in error messages. */
   secretValues(): readonly string[];
+  /** Sees every response's headers (e.g. to keep a load-balancer affinity cookie current). */
+  onResponse?(headers: Headers): void;
 }
 
 export interface RetryOptions {
@@ -37,6 +39,10 @@ export interface HttpRequest {
   retry?: Partial<RetryOptions>;
   /** Treat these statuses as success instead of throwing (e.g. 404 probes). */
   acceptStatuses?: number[];
+  /** Read the body as bytes (documents) instead of text; available as `buffer`. */
+  binary?: boolean;
+  /** Refuse bodies larger than this (binary downloads). */
+  maxBytes?: number;
 }
 
 export interface HttpResponse {
@@ -46,6 +52,8 @@ export interface HttpResponse {
   url: string;
   /** Number of attempts used (1 = no retry). */
   attempts: number;
+  /** Raw body when the request was made with `binary: true`. */
+  buffer?: Buffer;
 }
 
 export type FetchFn = (input: string, init: RequestInit) => Promise<Response>;
@@ -163,7 +171,24 @@ export class HttpClient {
         continue;
       }
 
-      const body = await response.text();
+      const ok = (response.status >= 200 && response.status < 300) || !!req.acceptStatuses?.includes(response.status);
+      let buffer: Buffer | undefined;
+      let body: string;
+      if (req.binary && ok) {
+        const declared = Number(response.headers.get('content-length') ?? 0);
+        if (req.maxBytes && declared > req.maxBytes) {
+          await response.body?.cancel();
+          throw new IntegrationError('RESPONSE_INVALID', `Document from ${safeUrl(req.url)} is larger than ${Math.round(req.maxBytes / 1048576)} MB`);
+        }
+        buffer = Buffer.from(await response.arrayBuffer());
+        if (req.maxBytes && buffer.length > req.maxBytes) {
+          throw new IntegrationError('RESPONSE_INVALID', `Document from ${safeUrl(req.url)} is larger than ${Math.round(req.maxBytes / 1048576)} MB`);
+        }
+        body = '';
+      } else {
+        body = await response.text();
+      }
+      req.auth?.onResponse?.(response.headers);
 
       if (response.status === 401 && req.auth && !reauthenticated) {
         // Expired / revoked token: drop it and try once more with fresh credentials
@@ -174,7 +199,7 @@ export class HttpClient {
       }
 
       if ((response.status >= 200 && response.status < 300) || req.acceptStatuses?.includes(response.status)) {
-        return { status: response.status, headers: response.headers, body, url: req.url, attempts: attempt };
+        return { status: response.status, headers: response.headers, body, url: req.url, attempts: attempt, buffer };
       }
 
       const preview = redactText(body.slice(0, BODY_PREVIEW).replace(/\s+/g, ' ').trim(), secrets);

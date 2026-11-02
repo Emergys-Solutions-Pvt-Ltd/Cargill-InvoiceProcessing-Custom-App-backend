@@ -14,6 +14,7 @@
     "test": "node --import tsx --import ./test/setup-env.ts --test \"test/**/*.test.ts\"",
     "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f ../database/postgres/tests/test_integrations.sql",
     "mock:sap": "tsx scripts/mock-sap/start.ts",
+    "mock:onbase": "tsx scripts/mock-onbase/start.ts",
     "hash-password": "tsx scripts/hash-password.ts",
     "openapi:export": "tsx scripts/export-openapi.ts"
   },

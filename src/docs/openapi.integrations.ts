@@ -21,7 +21,7 @@ const limit = (def: number) => ({ name: 'limit', in: 'query', schema: { type: 'i
 
 export const integrationTag = {
   name: 'Integrations',
-  description: 'Settings > SAP Configuration: external invoice sources (SAP OData first), credentials, schedules, synchronization jobs (admin only)',
+  description: 'Settings > SAP Configuration and OnBase Configuration: external invoice sources (SAP OData, Hyland OnBase), credentials, schedules, synchronization jobs (admin only)',
 };
 
 export const integrationPaths = {
@@ -156,7 +156,7 @@ export const integrationSchemas = {
       isActive: { type: 'boolean', default: true },
       settings: {
         ...anyObject,
-        description: 'Provider settings. SAP OData: entitySet, select, expand, filters[{field,operator,type,values}], customFilter, orderBy, pageSize, incrementalField, incrementalFieldType, overlapMinutes, maxRecordsPerRun',
+        description: 'Provider settings. SAP OData: entitySet, select, expand, filters[{field,operator,type,values}], customFilter, orderBy, pageSize, incrementalField, incrementalFieldType, overlapMinutes, maxRecordsPerRun. OnBase: documentTypes, keywordFilters[{keyword,operator,value}], incremental, overlapDays, lookbackDays, windowDays, pageSize, attachDocuments',
         example: { entitySet: 'A_SupplierInvoice', filters: [{ field: 'CompanyCode', operator: 'in', type: 'string', values: ['1010'] }], incrementalField: 'LastChangeDateTime' },
       },
       keyFields: { type: 'array', items: { type: 'string' }, example: ['CompanyCode', 'FiscalYear', 'SupplierInvoice'] },
@@ -170,14 +170,14 @@ export const integrationSchemas = {
   IntegrationInput: {
     type: 'object', required: ['name', 'sourceSystem', 'connection', 'authType'],
     properties: {
-      providerType: { type: 'string', default: 'sap-odata' },
+      providerType: { type: 'string', enum: ['sap-odata', 'onbase-rest'], default: 'sap-odata' },
       name: { type: 'string', maxLength: 150 },
       description: nullableString,
       environment: { ...nullableString, example: 'Production' },
       sourceSystem: { type: 'string', example: 'S4P-100', description: 'Stable id of the source system; part of the invoice uniqueness key' },
       isActive: { type: 'boolean', default: true },
       connection: { ...anyObject, example: { baseUrl: 'https://my-s4.example.com', servicePath: '/sap/opu/odata/sap/API_SUPPLIERINVOICE_PROCESS_SRV', odataVersion: 'v2', sapClient: '100', timeoutMs: 30000, maxRetries: 3, defaultPageSize: 500 } },
-      authType: { type: 'string', enum: ['oauth2-client-credentials', 'basic', 'api-key', 'none'] },
+      authType: { type: 'string', enum: ['oauth2-client-credentials', 'basic', 'api-key', 'hyland-idp-password', 'none'] },
       authSettings: { ...anyObject, description: 'Non-secret values, e.g. { tokenUrl, clientId, scope }' },
       schedule: { ...anyObject, example: { mode: 'interval', intervalMinutes: 15, timezone: 'America/Argentina/Buenos_Aires' } },
       autoSyncEnabled: { type: 'boolean', default: false },

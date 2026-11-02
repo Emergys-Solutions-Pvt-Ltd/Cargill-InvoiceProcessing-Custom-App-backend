@@ -82,8 +82,10 @@ and record-level errors, and re-runs never create duplicates.
 
 * [Architecture & design](docs/integrations/ARCHITECTURE.md) – components, diagrams, data model, API, decisions
 * [Operations](docs/integrations/OPERATIONS.md) – configuration, worker deployment, key rotation, monitoring, tests
+* [OnBase](docs/integrations/ONBASE.md) – Settings > OnBase Configuration: Hyland OnBase documents + keywords + PDF
 * [Adding a provider](docs/integrations/ADDING_A_PROVIDER.md) – plug in another ERP / invoice source
 * `npm run mock:sap` – local mock SAP service (OAuth `mock-client` / `mock-secret`) for development
+* `npm run mock:onbase` – local mock Hyland OnBase (IdP + API Server) for development
 
 ## Data access
 

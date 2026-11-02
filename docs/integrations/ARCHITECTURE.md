@@ -282,7 +282,16 @@ Validation messages come from the API (`details.fieldErrors`) and are shown next
 6. Frontend module + translations.
 7. Tests, docs (`ADDING_A_PROVIDER.md`, deployment/config), regression check of GP / SJO screens.
 
-## 13. Assumptions & open questions
+## 13. Second provider: Hyland OnBase (ECM)
+
+`providers/onbase` adds OnBase without changing the orchestrator contract: a new auth strategy
+(`hyland-idp-password`), an extractor (document queries by type + keywords, date windows split at
+the result limit), a connection tester, templates, and the optional `DocumentFetcher` capability –
+the orchestrator attaches the source file through an `AttachmentStore` port
+(`persistence/fs-attachment-store.ts`, `usp_integration_invoices_without_attachment`). Details and
+open questions: [ONBASE.md](ONBASE.md).
+
+## 14. Assumptions & open questions
 
 Assumptions are configuration, not code, so they can change without redeploying:
 

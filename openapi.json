@@ -49,7 +49,7 @@
     },
     {
       "name": "Integrations",
-      "description": "Settings > SAP Configuration: external invoice sources (SAP OData first), credentials, schedules, synchronization jobs (admin only)"
+      "description": "Settings > SAP Configuration and OnBase Configuration: external invoice sources (SAP OData, Hyland OnBase), credentials, schedules, synchronization jobs (admin only)"
     }
   ],
   "security": [
@@ -4138,7 +4138,7 @@
           "settings": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Provider settings. SAP OData: entitySet, select, expand, filters[{field,operator,type,values}], customFilter, orderBy, pageSize, incrementalField, incrementalFieldType, overlapMinutes, maxRecordsPerRun",
+            "description": "Provider settings. SAP OData: entitySet, select, expand, filters[{field,operator,type,values}], customFilter, orderBy, pageSize, incrementalField, incrementalFieldType, overlapMinutes, maxRecordsPerRun. OnBase: documentTypes, keywordFilters[{keyword,operator,value}], incremental, overlapDays, lookbackDays, windowDays, pageSize, attachDocuments",
             "example": {
               "entitySet": "A_SupplierInvoice",
               "filters": [
@@ -4219,6 +4219,10 @@
         "properties": {
           "providerType": {
             "type": "string",
+            "enum": [
+              "sap-odata",
+              "onbase-rest"
+            ],
             "default": "sap-odata"
           },
           "name": {
@@ -4262,6 +4266,7 @@
               "oauth2-client-credentials",
               "basic",
               "api-key",
+              "hyland-idp-password",
               "none"
             ]
           },

@@ -10,7 +10,9 @@ import { AesGcmSecretStore, UnavailableSecretStore, type SecretStore } from './c
 import { SyncScheduler } from './jobs/sync-scheduler.js';
 import { SyncWorker } from './jobs/sync-worker.js';
 import { PgJobQueue, PgSyncStore } from './persistence/pg-sync-store.js';
+import { onbaseProvider } from './providers/onbase/onbase.provider.js';
 import { sapODataProvider } from './providers/sap-odata/sap-odata.provider.js';
+import { FsAttachmentStore } from './persistence/fs-attachment-store.js';
 import { SyncOrchestrator } from './sync/sync-orchestrator.js';
 
 /**
@@ -20,7 +22,7 @@ import { SyncOrchestrator } from './sync/sync-orchestrator.js';
  */
 export const logger = createLogger({ component: 'integrations' });
 
-export const providers = new ProviderRegistry().register(sapODataProvider);
+export const providers = new ProviderRegistry().register(sapODataProvider).register(onbaseProvider);
 
 export const authStrategies = new AuthStrategyRegistry();
 for (const strategy of builtInAuthStrategies) authStrategies.register(strategy);
@@ -49,7 +51,17 @@ export const syncStore = new PgSyncStore();
 export const jobQueue = new PgJobQueue();
 export const contextFactory = new ProviderContextFactory({ providers, authStrategies, secrets, logger });
 
-const orchestrator = new SyncOrchestrator({ store: syncStore, contexts: contextFactory, config: configDependencies, events, logger });
+// ECM providers (OnBase) attach the source document; stored next to uploaded PDFs
+export const attachmentStore = new FsAttachmentStore(env.storageRoot);
+
+const orchestrator = new SyncOrchestrator({
+  store: syncStore,
+  attachments: attachmentStore,
+  contexts: contextFactory,
+  config: configDependencies,
+  events,
+  logger,
+});
 
 export const worker = new SyncWorker(
   {
