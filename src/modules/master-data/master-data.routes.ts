@@ -6,7 +6,7 @@ import { parse } from '../../utils/validate.js';
 import {
   MASTER_DATA_ENTITIES,
   STATUS_COLORS,
-  deleteItem,
+  deactivateItem,
   listEntities,
   listItems,
   listOptions,
@@ -71,11 +71,16 @@ router.put('/:entity/:id', requireAdmin, async (req, res) => {
   res.json({ message: `${item.name} updated`, data: item });
 });
 
-/** DELETE /api/master-data/:entity/:id - delete an unused item (409 when still referenced) */
+/**
+ * DELETE /api/master-data/:entity/:id - Configuration screen's "Delete" (confirm -> flip active
+ * flag to NO). Calls usp_master_data_save(..., p_is_active => false), not usp_master_data_delete
+ * (a real hard delete, reserved for an actual admin "permanently remove" action) - see
+ * shared/handoffs/database.md (2026-11-02, Database-1) for why the two are kept apart.
+ */
 router.delete('/:entity/:id', requireAdmin, async (req, res) => {
   const { entity, id } = parse(itemParams, req.params);
-  const removed = await deleteItem(entity, id);
-  res.json({ message: 'Deleted', count: removed });
+  const item = await deactivateItem(entity, id);
+  res.json({ message: `${item.name} deactivated`, data: item });
 });
 
 export default router;

@@ -1,4 +1,5 @@
 import { callFunction, callFunctionSingle, toPageMeta, type PageColumns } from '../../db/procedures.js';
+import { HttpError } from '../../utils/httpError.js';
 import type { Paginated } from '../../utils/pagination.js';
 
 /** API names of the Settings > Configuration lists (rows of app.master_data_entities). */
@@ -142,7 +143,37 @@ export const saveItem = async (entity: MasterDataEntity, input: MasterDataInput,
     }),
   );
 
-/** Raises CA404 (not found) or CA409 (still referenced: deactivate instead). */
-export const deleteItem = async (entity: MasterDataEntity, id: number): Promise<number> =>
-  (await callFunctionSingle<{ rows_affected: number }>('usp_master_data_delete', { p_entity: entity, p_id: id }))
-    .rows_affected;
+/**
+ * usp_master_data_save expects the full row on every call (confirmed with Database-1 during the
+ * original masters module work) - fetch the current row and resend it with isActive: false,
+ * rather than a bare partial patch that would null out name/code/etc.
+ */
+const findItemById = async (entity: MasterDataEntity, id: number): Promise<MasterDataItem | null> => {
+  const MAX_PAGE_SIZE = 100;
+  for (let page = 1; page <= 50; page++) {
+    const { data, totalPages } = await listItems(entity, { search: '', includeInactive: true, page, limit: MAX_PAGE_SIZE });
+    const item = data.find((r) => r.id === id);
+    if (item) return item;
+    if (data.length === 0 || page >= totalPages) return null;
+  }
+  return null;
+};
+
+/** Configuration screen's "Delete" (confirm -> flip active flag to NO). Raises CA404 if the item doesn't exist. */
+export const deactivateItem = async (entity: MasterDataEntity, id: number): Promise<MasterDataItem> => {
+  const current = await findItemById(entity, id);
+  if (!current) throw new HttpError(404, `Record ${id} not found in '${entity}'`);
+  return saveItem(
+    entity,
+    {
+      code: current.code,
+      name: current.name,
+      description: current.description,
+      parentId: current.parentId,
+      color: current.color,
+      sortOrder: current.sortOrder,
+      isActive: false,
+    },
+    id,
+  );
+};

@@ -6,7 +6,7 @@ import { pool } from './pool.js';
  * Each row has the shape of an app.udt_*_result type, with snake_case column names.
  */
 const FUNCTION_NAME = /^usp_[a-z_]+$/;
-const ARG_NAME = /^p_[a-z_]+$/;
+const ARG_NAME = /^p_[a-z0-9_]+$/;
 
 export const callFunction = async <T>(name: string, args: Record<string, unknown> = {}): Promise<T[]> => {
   if (!FUNCTION_NAME.test(name)) throw new Error(`Invalid function name: ${name}`);
