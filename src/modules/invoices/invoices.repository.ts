@@ -26,8 +26,9 @@ export interface InvoiceRow {
   status: InvoiceStatus;
   receptionDate: Date;
   emailReceptionDate: Date | null;
-  vendorName: string;
-  cuit: string;
+  /** NULL for SJO invoices, which identify the vendor by ID Fiscal / A.B. Number (sjoFields). */
+  vendorName: string | null;
+  cuit: string | null;
   countryStation: string | null;
   pdfAttachmentId: number | null;
   pdfFileName: string | null;
@@ -52,6 +53,27 @@ export interface InvoiceRow {
   updatedBy: number | null;
   updatedByName: string | null;
   isManual: boolean;
+  /** SJO Invoice Processing fields (app.invoice_sjo_fields); null for other apps. */
+  sjoFields: SjoFieldsRow | null;
+}
+
+export interface LookupRef {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface SjoFieldsRow {
+  country: LookupRef;
+  businessUnit: LookupRef;
+  erpSystem: LookupRef;
+  idFiscal: string;
+  abNumber: string | null;
+  abName: string | null;
+  flowTurnDown: boolean;
+  criticalVendor: boolean;
+  urgentInvoice: boolean;
+  updatedAt: Date | null;
 }
 
 export interface AttachmentRow {
@@ -286,8 +308,8 @@ interface InvoiceResult {
   status: InvoiceStatus;
   reception_date: DbDate;
   email_reception_date: DbDate | null;
-  vendor_name: string;
-  cuit: string;
+  vendor_name: string | null;
+  cuit: string | null;
   country_station: string | null;
   pdf_attachment_id: number | null;
   pdf_file_name: string | null;
@@ -328,6 +350,26 @@ interface AttachmentResult {
   storage_provider: 'local' | 's3' | null;
   storage_bucket: string | null;
   content_sha256: string | null;
+}
+
+// app.udt_invoice_sjo_fields_result (NULL for non-SJO invoices)
+interface SjoFieldsResult {
+  country_id: number;
+  country_code: string;
+  country_name: string;
+  business_unit_id: number;
+  business_unit_code: string;
+  business_unit_name: string;
+  erp_system_id: number;
+  erp_system_code: string;
+  erp_system_name: string;
+  id_fiscal: string;
+  ab_number: string | null;
+  ab_name: string | null;
+  flow_turn_down: boolean;
+  critical_vendor: boolean;
+  urgent_invoice: boolean;
+  updated_at: DbDate | null;
 }
 
 // app.udt_invoice_sf_fields_result (NULL until app.invoice_sf_fields has a row for this invoice)
@@ -493,7 +535,21 @@ interface CcppResult {
   fiscal_zone: string | null;
 }
 
-const toInvoice = (r: InvoiceResult): InvoiceRow => ({
+const toSjoFields = (r: SjoFieldsResult): SjoFieldsRow => ({
+  country: { id: r.country_id, code: r.country_code, name: r.country_name },
+  businessUnit: { id: r.business_unit_id, code: r.business_unit_code, name: r.business_unit_name },
+  erpSystem: { id: r.erp_system_id, code: r.erp_system_code, name: r.erp_system_name },
+  idFiscal: r.id_fiscal,
+  abNumber: r.ab_number,
+  abName: r.ab_name,
+  flowTurnDown: r.flow_turn_down,
+  criticalVendor: r.critical_vendor,
+  urgentInvoice: r.urgent_invoice,
+  updatedAt: toDate(r.updated_at),
+});
+
+const toInvoice = (r: InvoiceResult, sjo: SjoFieldsResult | null = null): InvoiceRow => ({
+  sjoFields: sjo ? toSjoFields(sjo) : null,
   id: r.id,
   invoiceCode: r.invoice_code,
   moduleSlug: r.module_slug,
@@ -730,14 +786,14 @@ export interface InvoiceListFilters {
 
 export const listInvoices = async (moduleId: number, f: InvoiceListFilters) => {
   // app.udt_invoice_list_result: invoice (jsonb of udt_invoice_result) + paging columns
-  const rows = await callFunction<{ invoice: InvoiceResult } & PageColumns>('usp_invoice_list', {
+  const rows = await callFunction<{ invoice: InvoiceResult; sjo_fields: SjoFieldsResult | null } & PageColumns>('usp_invoice_list', {
     p_module_id: moduleId,
     p_search: f.search || null,
     p_status: f.status,
     p_page: f.page,
     p_page_size: f.limit,
   });
-  return { rows: rows.map((r) => toInvoice(r.invoice)), ...toPageMeta(rows[0], f.limit) };
+  return { rows: rows.map((r) => toInvoice(r.invoice, r.sjo_fields)), ...toPageMeta(rows[0], f.limit) };
 };
 
 /** Header, attachments (primary first), line items, CCPPs, source email and legacy SF fields in one round trip. */
@@ -750,10 +806,11 @@ export const getInvoiceDetail = async (code: string): Promise<InvoiceDetail | nu
     ccpps: CcppResult[];
     source_email: InvoiceEmailResult | null;
     sf_fields: SfFieldsResult | null;
+    sjo_fields: SjoFieldsResult | null;
   }>('usp_invoice_get_by_code', { p_invoice_code: code });
   if (!row) return null;
   return {
-    invoice: toInvoice(row.invoice),
+    invoice: toInvoice(row.invoice, row.sjo_fields),
     attachments: row.attachments.map(toAttachment),
     lineItems: row.line_items.map(toLineItem),
     ccpps: row.ccpps.map(toCcpp),
@@ -807,6 +864,35 @@ export const updateInvoiceDetails = async (code: string, input: InvoiceDetailsIn
     p_claim_number: input.claimNumber,
     p_additional_info: input.additionalInfo,
     p_assigned_user_id: input.assignedUserId,
+  });
+};
+
+export interface SjoFieldsInput {
+  countryId: number;
+  businessUnitId: number;
+  erpSystemId: number;
+  idFiscal: string;
+  abNumber: string | null;
+  abName: string | null;
+  flowTurnDown: boolean;
+  criticalVendor: boolean;
+  urgentInvoice: boolean;
+}
+
+/** Invoice Details "Save" of the SJO fields (insert or update). Raises CA400 (not SJO, missing / inactive value), CA404. */
+export const saveSjoFields = async (code: string, userId: number, input: SjoFieldsInput) => {
+  await callFunctionSingle('usp_invoice_sjo_fields_save', {
+    p_invoice_code: code,
+    p_updated_by: userId,
+    p_country_id: input.countryId,
+    p_business_unit_id: input.businessUnitId,
+    p_erp_system_id: input.erpSystemId,
+    p_id_fiscal: input.idFiscal,
+    p_ab_number: input.abNumber,
+    p_ab_name: input.abName,
+    p_flow_turn_down: input.flowTurnDown,
+    p_critical_vendor: input.criticalVendor,
+    p_urgent_invoice: input.urgentInvoice,
   });
 };
 

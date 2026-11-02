@@ -67,6 +67,64 @@ describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API 
     });
   }
 
+  it('SJO: create with the SJO fields, list, edit in Invoice Details, validation', async () => {
+    const id = `IN-${tag}-SJO`;
+    const users = await call('GET', '/apps/sjo/users');
+    const assignee = users.json[0];
+
+    const missing = await call('POST', '/apps/sjo/invoices', { id: `${id}-X`, country: 'NIC' });
+    assert.equal(missing.status, 400, 'BU, ERP and ID Fiscal are required');
+    const unknown = await call('POST', '/apps/sjo/invoices', { id: `${id}-Y`, country: 'Narnia', businessUnit: 'CFN', erp: 'JDE', idFiscal: '1' });
+    assert.equal(unknown.status, 400);
+    assert.match(unknown.json.message, /country Narnia/);
+
+    const created = await call('POST', '/apps/sjo/invoices', {
+      id, assignedUserId: assignee?.id ?? null, flowTurnDown: true, criticalVendor: false, urgentInvoice: 'no',
+      country: 'Nicaragua', businessUnit: 'cfn', erp: 'JDE', idFiscal: '135266470', abNumber: '39102783', abName: 'CITIBANK NA',
+    });
+    assert.equal(created.status, 201, created.text);
+
+    const list = await call('GET', `/apps/sjo/invoices?search=${tag}&limit=20`);
+    const row = list.json.data.find((i: { id: string }) => i.id === id);
+    assert.equal(row.sjoFields.country.code, 'NIC');
+    assert.equal(row.sjoFields.businessUnit.code, 'CFN');
+    assert.equal(row.sjoFields.erpSystem.code, 'JDE');
+    assert.equal(row.sjoFields.idFiscal, '135266470');
+    assert.equal(row.sjoFields.abName, 'CITIBANK NA');
+    assert.deepEqual([row.sjoFields.flowTurnDown, row.sjoFields.criticalVendor, row.sjoFields.urgentInvoice], [true, false, false]);
+    assert.equal(row.assignedUser?.id ?? null, assignee?.id ?? null);
+    assert.equal(row.vendorName, null);
+    assert.equal((await call('GET', '/apps/sjo/invoices?search=39102783&limit=50')).json.data.some((i: { id: string }) => i.id === id), true,
+      'searchable by A.B. Number');
+
+    const detail = await call('GET', `/invoices/${encodeURIComponent(id)}`);
+    const sap = (await call('GET', '/master-data/erp-systems/options')).json.find((o: { code: string }) => o.code === 'SAP');
+    const save = await call('PUT', `/invoices/${encodeURIComponent(id)}/details`, {
+      assignedUserId: null,
+      sjoFields: {
+        countryId: detail.json.sjoFields.country.id, businessUnitId: detail.json.sjoFields.businessUnit.id, erpSystemId: sap.id,
+        idFiscal: '999', abNumber: '', abName: 'ACME', flowTurnDown: false, criticalVendor: true, urgentInvoice: true,
+      },
+    });
+    assert.equal(save.status, 200, save.text);
+    assert.equal(save.json.data.sjoFields.erpSystem.code, 'SAP');
+    assert.equal(save.json.data.sjoFields.abNumber, null);
+    assert.equal(save.json.data.sjoFields.urgentInvoice, true);
+    assert.equal(save.json.data.assignedUser, null);
+
+    const blank = await call('PUT', `/invoices/${encodeURIComponent(id)}/details`, {
+      sjoFields: { countryId: detail.json.sjoFields.country.id, businessUnitId: 1, erpSystemId: sap.id, idFiscal: ' ' },
+    });
+    assert.equal(blank.status, 400, 'ID Fiscal is required');
+
+    const gp = (await call('GET', '/apps/GP/invoices?limit=1')).json.data[0];
+    assert.equal(gp.sjoFields, null);
+    const notSjo = await call('PUT', `/invoices/${encodeURIComponent(gp.id)}/details`, {
+      sjoFields: { countryId: 1, businessUnitId: 1, erpSystemId: 1, idFiscal: '1' },
+    });
+    assert.equal(notSjo.status, 400, 'SJO fields only on SJO invoices');
+  });
+
   it('non-admins cannot reach the integration API', async () => {
     const saved = token;
     const user = await call('POST', '/auth/login', { username: 'GP', password: PASSWORD });

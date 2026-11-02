@@ -11,6 +11,7 @@ export const MASTER_DATA_ENTITIES = [
   'teams',
   'statuses',
   'processes',
+  'erp-systems',
 ] as const;
 export type MasterDataEntity = (typeof MASTER_DATA_ENTITIES)[number];
 

@@ -1,6 +1,6 @@
 import { signedAttachmentUrl } from '../../utils/fileUrl.js';
 import { toDayFirstDateTime, toDisplayDateTime, toIsoDate, toMoney, toNumberString } from '../../utils/format.js';
-import type { AttachmentRow, CcppRow, InvoiceRow, LineItemRow, SfFieldsRow, SourceEmailRow } from './invoices.repository.js';
+import type { AttachmentRow, CcppRow, InvoiceRow, LineItemRow, SfFieldsRow, SjoFieldsRow, SourceEmailRow } from './invoices.repository.js';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
@@ -21,6 +21,20 @@ const pdfAttachmentOf = (row: InvoiceRow) => {
   };
 };
 
+/** SJO Invoice Processing fields (null for other apps); country / BU / ERP as { id, code, name }. */
+export const toSjoFields = (f: SjoFieldsRow) => ({
+  country: f.country,
+  businessUnit: f.businessUnit,
+  erpSystem: f.erpSystem,
+  idFiscal: f.idFiscal,
+  abNumber: f.abNumber,
+  abName: f.abName,
+  flowTurnDown: f.flowTurnDown,
+  criticalVendor: f.criticalVendor,
+  urgentInvoice: f.urgentInvoice,
+  updatedAt: iso(f.updatedAt),
+});
+
 /** Row shape used by the Invoices grid (matches the frontend mock contract). */
 export const toInvoiceListItem = (row: InvoiceRow) => {
   const pdfAttachment = pdfAttachmentOf(row);
@@ -40,6 +54,8 @@ export const toInvoiceListItem = (row: InvoiceRow) => {
     pdfFileName: pdfAttachment?.fileName ?? null,
     pdfUrl: pdfAttachment?.url ?? null,
     pdfAttachment,
+    assignedUser: row.assignedUserId === null ? null : { id: row.assignedUserId, name: row.assignedUserName },
+    sjoFields: row.sjoFields ? toSjoFields(row.sjoFields) : null,
   };
 };
 

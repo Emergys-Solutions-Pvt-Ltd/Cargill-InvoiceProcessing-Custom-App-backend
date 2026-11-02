@@ -25,20 +25,65 @@ const dateString = z.string().transform((value, ctx) => {
   return date;
 });
 
-const invoiceInput = z.object({
+const cuitSchema = z.string().trim().regex(/^\d{2}-?\d{8}-?\d$/, 'CUIT must look like 30-50001234-9');
+const amountSchema = z.coerce.number().nonnegative().max(1e15);
+
+/** Blank → null, so CSV / form values can leave optional fields empty. */
+const blankToNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? null : v);
+const optionalText = (max: number) =>
+  z.preprocess(blankToNull, z.string().trim().max(max).nullable().optional()).transform((v) => v ?? null);
+const requiredText = (max: number) => z.string().trim().min(1, 'Required').max(max);
+
+/** Checkbox / CSV flag: true, false, yes / no, sí, x, 1 / 0; empty = false. */
+const TRUE_VALUES = new Set(['true', 'yes', 'y', 'si', 'sí', 'x', '1']);
+const flag = z
+  .union([z.boolean(), z.number(), z.string(), z.null()])
+  .optional()
+  .transform((v) => (typeof v === 'string' ? TRUE_VALUES.has(v.trim().toLowerCase()) : Boolean(v)));
+
+const commonFields = {
   id: z.string().trim().min(1).max(60).optional(),
-  vendorName: z.string().trim().min(1).max(255),
-  cuit: z.string().trim().regex(/^\d{2}-?\d{8}-?\d$/, 'CUIT must look like 30-50001234-9'),
   countryStation: z.string().trim().max(160).optional().nullable(),
   invoice1a: z.string().trim().max(30).optional().nullable(),
   invoice2a: z.string().trim().max(30).optional().nullable(),
-  amount: z.coerce.number().nonnegative().max(1e15),
   status: statusSchema.default('Pending'),
   receptionDate: dateString.optional(),
   emailReceptionDate: dateString.optional().nullable(),
+  /** "Assign To" */
+  assignedUserId: z.preprocess(blankToNull, z.coerce.number().int().positive().nullable().optional()).transform((v) => v ?? null),
+};
+
+const invoiceInput = z.object({
+  ...commonFields,
+  vendorName: z.string().trim().min(1).max(255),
+  cuit: cuitSchema,
+  amount: amountSchema,
 });
 
-type InvoiceInput = z.infer<typeof invoiceInput>;
+/**
+ * SJO Invoice Processing: Country, BU, ERP (code or name of a Configuration item) and ID Fiscal are
+ * required; vendor / CUIT / amount are optional (the vendor is identified by ID Fiscal / A.B. Number).
+ */
+const sjoInvoiceInput = z.object({
+  ...commonFields,
+  vendorName: optionalText(255),
+  cuit: z.preprocess(blankToNull, cuitSchema.nullable().optional()).transform((v) => v ?? null),
+  amount: z.preprocess(blankToNull, amountSchema.nullable().optional()).transform((v) => v ?? null),
+  country: requiredText(150),
+  businessUnit: requiredText(150),
+  erp: requiredText(150),
+  idFiscal: requiredText(30),
+  abNumber: optionalText(30),
+  abName: optionalText(255),
+  flowTurnDown: flag,
+  criticalVendor: flag,
+  urgentInvoice: flag,
+});
+
+type InvoiceInput = z.infer<typeof invoiceInput> | z.infer<typeof sjoInvoiceInput>;
+
+const isSjo = (appModule: AppModule) => appModule.applicationCode.toUpperCase() === 'SJO';
+const inputSchemaFor = (appModule: AppModule) => (isSjo(appModule) ? sjoInvoiceInput : invoiceInput);
 
 const listQuery = z.object({
   search: z.string().trim().default(''),
@@ -63,6 +108,21 @@ const toNewInvoice = (appModule: AppModule, input: InvoiceInput): NewInvoice => 
     status: input.status,
     receptionDate: input.receptionDate ?? now,
     emailReceptionDate: input.emailReceptionDate ?? null,
+    assignedUserId: input.assignedUserId,
+    sjo:
+      'idFiscal' in input
+        ? {
+            country: input.country,
+            businessUnit: input.businessUnit,
+            erp: input.erp,
+            idFiscal: input.idFiscal,
+            abNumber: input.abNumber,
+            abName: input.abName,
+            flowTurnDown: input.flowTurnDown,
+            criticalVendor: input.criticalVendor,
+            urgentInvoice: input.urgentInvoice,
+          }
+        : null,
   };
 };
 
@@ -82,7 +142,7 @@ router.get('/', async (req, res) => {
 router.post('/bulk', async (req, res) => {
   const appModule = res.locals.appModule as AppModule;
   const { invoices } = parse(
-    z.object({ invoices: z.array(invoiceInput).min(1).max(MAX_BULK_INVOICES) }),
+    z.object({ invoices: z.array(inputSchemaFor(appModule)).min(1).max(MAX_BULK_INVOICES) }),
     req.body,
   );
   const created = await createInvoices(appModule, invoices, req.user!.id);
@@ -96,7 +156,7 @@ router.post('/bulk', async (req, res) => {
 /** POST /api/apps/:appId/invoices - "Create Invoice" modal */
 router.post('/', async (req, res) => {
   const appModule = res.locals.appModule as AppModule;
-  const input = parse(invoiceInput, req.body);
+  const input = parse(inputSchemaFor(appModule), req.body);
   const [created] = await createInvoices(appModule, [input], req.user!.id);
   res.status(201).json({ message: 'Invoice created successfully', data: { id: created } });
 });

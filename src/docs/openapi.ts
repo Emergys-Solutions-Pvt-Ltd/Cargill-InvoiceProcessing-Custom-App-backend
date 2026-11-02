@@ -21,7 +21,7 @@ const status = {
 };
 const entity = {
   name: 'entity', in: 'path', required: true,
-  schema: { type: 'string', enum: ['countries', 'states', 'cities', 'business-units', 'teams', 'statuses', 'processes'] },
+  schema: { type: 'string', enum: ['countries', 'states', 'cities', 'business-units', 'teams', 'statuses', 'processes', 'erp-systems'] },
 };
 const itemId = { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } };
 
@@ -108,7 +108,8 @@ export const openApiDocument = {
       },
       post: {
         tags: ['Invoices'], summary: 'Create one invoice',
-        description: 'Creates the vendor (by CUIT) and country station when they do not exist yet. Counts toward the app\'s daily invoice limit.',
+        description: 'Creates the vendor (by CUIT) and country station when they do not exist yet. Counts toward the app\'s daily invoice limit. '
+          + 'SJO app: Country, BU, ERP and ID Fiscal are required and vendor / CUIT / amount are optional (see InvoiceInput).',
         requestBody: body(ref('InvoiceInput')),
         responses: { 201: json(ref('CreateInvoiceResponse'), 'Created'), ...errors(400, 401, 403, 404, 409) },
       },
@@ -470,10 +471,27 @@ export const openApiDocument = {
           emailReceptionDate: { ...nullableString, example: '2026-07-09 09:30 AM' },
           invoice1a: nullableString, invoice2a: nullableString,
           countryStation: { ...nullableString, example: 'ARG - Rosario Port' },
-          vendorName: { type: 'string' }, cuit: { type: 'string', example: '30-50001234-9' },
+          vendorName: { ...nullableString, description: 'NULL for SJO invoices' }, cuit: { ...nullableString, example: '30-50001234-9' },
           status, amount: money, currencyCode: { ...nullableString, example: 'USD' },
           pdfFileName: nullableString, pdfUrl: { ...nullableString, description: 'Signed, short-lived URL' },
           pdfAttachment: ref('PdfAttachment'),
+          assignedUser: ref('NamedRef'),
+          sjoFields: ref('SjoFields'),
+        },
+      },
+      LookupRef: {
+        type: 'object',
+        properties: { id: { type: 'integer' }, code: { type: 'string', example: 'NIC' }, name: { type: 'string', example: 'Nicaragua' } },
+      },
+      SjoFields: {
+        type: 'object', nullable: true, description: 'SJO Invoice Processing fields; null for GP / ROSPBU invoices',
+        properties: {
+          country: ref('LookupRef'), businessUnit: ref('LookupRef'), erpSystem: ref('LookupRef'),
+          idFiscal: { type: 'string', example: '135266470' },
+          abNumber: { ...nullableString, example: '39102783' },
+          abName: { ...nullableString, example: 'CITIBANK NA' },
+          flowTurnDown: { type: 'boolean' }, criticalVendor: { type: 'boolean' }, urgentInvoice: { type: 'boolean' },
+          updatedAt: { ...nullableString, format: 'date-time' },
         },
       },
       Attachment: {
@@ -658,7 +676,8 @@ export const openApiDocument = {
         },
       },
       InvoiceInput: {
-        type: 'object', required: ['vendorName', 'cuit', 'amount'],
+        type: 'object',
+        description: 'Required: vendorName, cuit, amount - except in the SJO app, where country, businessUnit, erp and idFiscal are required instead.',
         properties: {
           id: { type: 'string', maxLength: 60, description: 'Generated as INV-<PREFIX>-nnnnnn when omitted', example: 'INV-GP-8801' },
           vendorName: { type: 'string', maxLength: 255, example: 'Molinos Agro S.A.' },
@@ -670,6 +689,16 @@ export const openApiDocument = {
           status: { ...status, default: 'Pending', description: 'Case-insensitive' },
           receptionDate: { type: 'string', example: '2026-10-21', description: 'YYYY-MM-DD; defaults to today' },
           emailReceptionDate: { ...nullableString, example: '2026-10-21 10:00 AM' },
+          assignedUserId: { type: 'integer', nullable: true, description: 'Assign To: active user with access to the app' },
+          country: { type: 'string', description: 'SJO: code or name (Configuration > Countries)', example: 'NIC' },
+          businessUnit: { type: 'string', description: 'SJO: code or name (Configuration > Business Units)', example: 'CFN' },
+          erp: { type: 'string', description: 'SJO: code or name (Configuration > ERP Systems)', example: 'JDE' },
+          idFiscal: { type: 'string', maxLength: 30, description: 'SJO', example: '135266470' },
+          abNumber: { ...nullableString, maxLength: 30, description: 'SJO', example: '39102783' },
+          abName: { ...nullableString, maxLength: 255, description: 'SJO', example: 'CITIBANK NA' },
+          flowTurnDown: { type: 'boolean', default: false, description: 'SJO; also accepts yes/no, x, 1/0' },
+          criticalVendor: { type: 'boolean', default: false, description: 'SJO' },
+          urgentInvoice: { type: 'boolean', default: false, description: 'SJO' },
         },
       },
       CreateInvoiceResponse: {
@@ -779,6 +808,16 @@ export const openApiDocument = {
           claimNumber: { type: 'number', minimum: 0, default: 0 },
           additionalInfo: { ...nullableString, maxLength: 1000 },
           assignedUserId: { type: 'integer', nullable: true },
+          sjoFields: {
+            type: 'object', description: 'SJO invoices only; omit to leave the SJO fields unchanged',
+            required: ['countryId', 'businessUnitId', 'erpSystemId', 'idFiscal'],
+            properties: {
+              countryId: { type: 'integer' }, businessUnitId: { type: 'integer' }, erpSystemId: { type: 'integer' },
+              idFiscal: { type: 'string', maxLength: 30 }, abNumber: { ...nullableString, maxLength: 30 },
+              abName: { ...nullableString, maxLength: 255 },
+              flowTurnDown: { type: 'boolean' }, criticalVendor: { type: 'boolean' }, urgentInvoice: { type: 'boolean' },
+            },
+          },
         },
       },
       StatusColor: { type: 'string', enum: ['warning', 'info', 'success', 'danger', 'neutral'], description: 'Status pill style' },

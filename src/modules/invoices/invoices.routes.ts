@@ -11,6 +11,7 @@ import {
   getInvoiceDetail,
   listCcpps,
   saveCcpp,
+  saveSjoFields,
   sendToPreviousTeam,
   updateInvoiceDetails,
   updateInvoiceStatus,
@@ -73,12 +74,29 @@ const detailsBody = z.object({
   claimNumber: z.coerce.number().min(0).max(1e15).default(0),
   additionalInfo: z.string().trim().max(1000).nullable().optional().transform((v) => v || null),
   assignedUserId: nullableId,
+  /** SJO invoices only; omit to leave the SJO fields unchanged. */
+  sjoFields: z
+    .object({
+      countryId: z.coerce.number().int().positive(),
+      businessUnitId: z.coerce.number().int().positive(),
+      erpSystemId: z.coerce.number().int().positive(),
+      idFiscal: z.string().trim().min(1, 'Required').max(30),
+      abNumber: z.string().trim().max(30).nullable().optional().transform((v) => v || null),
+      abName: z.string().trim().max(255).nullable().optional().transform((v) => v || null),
+      flowTurnDown: z.boolean().default(false),
+      criticalVendor: z.boolean().default(false),
+      urgentInvoice: z.boolean().default(false),
+    })
+    .optional(),
 });
 
-/** PUT /api/invoices/:invoiceId/details - Invoice Details "Save" (Super User fields) */
+/** PUT /api/invoices/:invoiceId/details - Invoice Details "Save" (Super User fields, SJO fields) */
 router.put('/:invoiceId/details', async (req, res) => {
   const { invoice } = await loadInvoice(req);
-  await updateInvoiceDetails(invoice.invoiceCode, parse(detailsBody, req.body));
+  const { sjoFields, ...details } = parse(detailsBody, req.body);
+  // SJO fields first: their validation (required / inactive values) fails before anything is written
+  if (sjoFields) await saveSjoFields(invoice.invoiceCode, req.user!.id, sjoFields);
+  await updateInvoiceDetails(invoice.invoiceCode, details);
   const { invoice: updated, ...children } = (await getInvoiceDetail(invoice.invoiceCode))!;
   res.json({ message: 'Invoice details saved', data: toInvoiceDetail(updated, children) });
 });

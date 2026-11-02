@@ -41,17 +41,33 @@ export const toPageMeta = (first: PageColumns | undefined, pageSize: number) => 
 
 // ---- Request type app.udt_invoice_input (sent as a JSON array) ----
 
+/** SJO Invoice Processing fields; country / BU / ERP are the code or name of a Configuration item. */
+export interface SjoInvoiceInput {
+  country: string;
+  businessUnit: string;
+  erp: string;
+  idFiscal: string;
+  abNumber: string | null;
+  abName: string | null;
+  flowTurnDown: boolean;
+  criticalVendor: boolean;
+  urgentInvoice: boolean;
+}
+
 export interface InvoiceInputRow {
   invoiceCode: string;
-  vendorName: string;
-  cuit: string;
+  /** Vendor, CUIT and amount are optional for SJO invoices only. */
+  vendorName: string | null;
+  cuit: string | null;
   countryStation: string | null;
   invoice1a: string | null;
   invoice2a: string | null;
-  amount: number;
+  amount: number | null;
   status: string;
   receptionDate: Date;
   emailReceptionDate: Date | null;
+  assignedUserId: number | null;
+  sjo: SjoInvoiceInput | null;
 }
 
 /** Keys must match the columns of app.udt_invoice_input (jsonb_populate_recordset). */
@@ -69,5 +85,15 @@ export const udtInvoiceInput = (rows: InvoiceInputRow[]) =>
       status: r.status,
       reception_date: r.receptionDate.toISOString().slice(0, 10),
       email_reception_date: r.emailReceptionDate?.toISOString() ?? null,
+      assigned_user_id: r.assignedUserId,
+      sjo_country: r.sjo?.country ?? null,
+      sjo_business_unit: r.sjo?.businessUnit ?? null,
+      sjo_erp: r.sjo?.erp ?? null,
+      id_fiscal: r.sjo?.idFiscal ?? null,
+      ab_number: r.sjo?.abNumber ?? null,
+      ab_name: r.sjo?.abName ?? null,
+      flow_turn_down: r.sjo?.flowTurnDown ?? null,
+      critical_vendor: r.sjo?.criticalVendor ?? null,
+      urgent_invoice: r.sjo?.urgentInvoice ?? null,
     })),
   );
