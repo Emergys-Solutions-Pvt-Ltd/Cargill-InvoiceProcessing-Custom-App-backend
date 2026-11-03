@@ -1,5 +1,5 @@
-import { closePool } from './db/pool.js';
-import { logger, startBackgroundSync, stopBackgroundSync } from './integrations/index.js';
+import { closePool } from './core/db/pool.js';
+import { logger, startBackgroundSync, stopBackgroundSync } from './modules/common/integrations/engine/index.js';
 
 /**
  * Dedicated synchronization worker (scheduler + job worker, no HTTP):

@@ -1,6 +1,6 @@
 # Adding another integration provider
 
-The synchronization framework is provider independent. SAP OData (`src/integrations/providers/sap-odata`)
+The synchronization framework is provider independent. SAP OData (`src/modules/common/integrations/engine/providers/sap-odata`)
 is one implementation of the `IntegrationProvider` contract; a new ERP, e-invoicing portal or REST
 feed plugs in the same way **without changing** the orchestrator, worker, scheduler, database
 functions, API or the field-mapping engine.
@@ -18,7 +18,7 @@ and `test/unit/extensibility.test.ts` proves it runs through the unchanged core.
 ## 1. Implement the contract
 
 ```ts
-// src/integrations/providers/acme-erp/acme-erp.provider.ts
+// src/modules/common/integrations/engine/providers/acme-erp/acme-erp.provider.ts
 import { z } from 'zod';
 import type { IntegrationProvider, InvoiceExtractor, ProviderContext } from '../../core/contracts.js';
 import { IntegrationError } from '../../core/errors.js';
@@ -107,7 +107,7 @@ Rules the core relies on (Liskov substitution):
 ## 2. Register it
 
 ```ts
-// src/integrations/index.ts
+// src/modules/common/integrations/engine/index.ts
 export const providers = new ProviderRegistry()
   .register(sapODataProvider)
   .register(acmeErpProvider);
@@ -121,9 +121,9 @@ validated on save and before every run, scheduled, retried and shown in the dash
 
 Use an existing strategy (`none`, `basic`, `api-key`, `oauth2-client-credentials`) by listing it in
 `supportedAuthTypes`. For a new mechanism (SAML bearer, X.509 client certificates, HMAC signatures …)
-implement `AuthStrategyFactory` (`src/integrations/core/auth/auth-strategy.ts`) with separate
+implement `AuthStrategyFactory` (`src/modules/common/integrations/engine/core/auth/auth-strategy.ts`) with separate
 `settingsSchema` (stored as JSON, returned to the UI) and `secretSchema` (encrypted, write-only), and
-register it in `src/integrations/index.ts` (`authStrategies.register(...)`). The UI renders its
+register it in `src/modules/common/integrations/engine/index.ts` (`authStrategies.register(...)`). The UI renders its
 fields from `settingsFields` / `secretFields`.
 
 ## 4. Frontend

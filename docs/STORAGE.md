@@ -1,9 +1,10 @@
 # Attachment storage (Amazon S3)
 
 Every invoice file (PDFs uploaded in Invoice Details, documents imported from OnBase, …) is written
-and read by one backend service, `AttachmentStorageService` (`src/storage`). It stores the file in
-S3 (or on local disk), then registers it in `app.invoice_attachments`; the UI only ever receives
-short-lived signed URLs to `/api/files/attachments/:id`, which streams the file through the API
+and read by one backend service, `AttachmentStorageService` (`src/modules/common/attachments/storage`). It stores the file in
+S3 (or on local disk), then registers it in the invoice's app table (`gpp|sjo|rospbu.invoice_attachments`);
+the UI only ever receives short-lived signed URLs to `/api/files/attachments/:app/:id` (the signature
+covers app and id), which streams the file through the API
 (the bucket is never public or exposed to browsers).
 
 ## Layout in the bucket

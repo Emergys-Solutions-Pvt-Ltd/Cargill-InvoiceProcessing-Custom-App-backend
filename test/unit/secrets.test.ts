@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { describe, it } from 'node:test';
-import { AesGcmSecretStore, UnavailableSecretStore } from '../../src/integrations/core/secrets/secret-store.js';
-import { createLogger, redact, redactText } from '../../src/integrations/core/logger.js';
-import { IntegrationError } from '../../src/integrations/core/errors.js';
-import { checkUrl } from '../../src/integrations/core/url-policy.js';
+import { AesGcmSecretStore, UnavailableSecretStore } from '../../src/modules/common/integrations/engine/core/secrets/secret-store.js';
+import { createLogger, redact, redactText } from '../../src/modules/common/integrations/engine/core/logger.js';
+import { IntegrationError } from '../../src/modules/common/integrations/engine/core/errors.js';
+import { checkUrl } from '../../src/modules/common/integrations/engine/core/url-policy.js';
 
 const key = () => crypto.randomBytes(32).toString('base64');
 

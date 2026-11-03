@@ -22,6 +22,8 @@ const PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'password';
 describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API && 'set E2E_API_URL to run' }, () => {
   const sap = new MockSapServer({ invoiceCount: 6, serverPageSize: 2, auth: { type: 'oauth', clientId: 'e2e-client', clientSecret: 'e2e-secret' } });
   const tag = `E2E${Date.now().toString(36).toUpperCase()}`;
+  // Invoices created by the non-sync tests: a different tag, so the SAP test's search by tag only finds its imports
+  const localTag = `LOC${Date.now().toString(36).toUpperCase()}`;
   let token = '';
   let integrationId = 0;
 
@@ -61,14 +63,14 @@ describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API 
       const list = await call('GET', `/apps/${app}/invoices?page=1&limit=5`);
       assert.equal(list.status, 200, list.text);
       assert.ok(list.json.data.length > 0, `${app} has invoices`);
-      const detail = await call('GET', `/invoices/${encodeURIComponent(list.json.data[0].id)}`);
+      const detail = await call('GET', `/apps/${app}/invoices/${encodeURIComponent(list.json.data[0].id)}`);
       assert.equal(detail.status, 200);
       assert.ok(Array.isArray(detail.json.attachments));
     });
   }
 
   it('SJO: create with the SJO fields, list, edit in Invoice Details, validation', async () => {
-    const id = `IN-${tag}-SJO`;
+    const id = `IN-${localTag}-SJO`;
     const users = await call('GET', '/apps/sjo/users');
     const assignee = users.json[0];
 
@@ -84,7 +86,7 @@ describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API 
     });
     assert.equal(created.status, 201, created.text);
 
-    const list = await call('GET', `/apps/sjo/invoices?search=${tag}&limit=20`);
+    const list = await call('GET', `/apps/sjo/invoices?search=${localTag}&limit=20`);
     const row = list.json.data.find((i: { id: string }) => i.id === id);
     assert.equal(row.sjoFields.country.code, 'NIC');
     assert.equal(row.sjoFields.businessUnit.code, 'CFN');
@@ -97,9 +99,9 @@ describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API 
     assert.equal((await call('GET', '/apps/sjo/invoices?search=39102783&limit=50')).json.data.some((i: { id: string }) => i.id === id), true,
       'searchable by A.B. Number');
 
-    const detail = await call('GET', `/invoices/${encodeURIComponent(id)}`);
+    const detail = await call('GET', `/apps/sjo/invoices/${encodeURIComponent(id)}`);
     const sap = (await call('GET', '/master-data/erp-systems/options')).json.find((o: { code: string }) => o.code === 'SAP');
-    const save = await call('PUT', `/invoices/${encodeURIComponent(id)}/details`, {
+    const save = await call('PUT', `/apps/sjo/invoices/${encodeURIComponent(id)}/details`, {
       assignedUserId: null,
       sjoFields: {
         countryId: detail.json.sjoFields.country.id, businessUnitId: detail.json.sjoFields.businessUnit.id, erpSystemId: sap.id,
@@ -112,17 +114,42 @@ describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API 
     assert.equal(save.json.data.sjoFields.urgentInvoice, true);
     assert.equal(save.json.data.assignedUser, null);
 
-    const blank = await call('PUT', `/invoices/${encodeURIComponent(id)}/details`, {
+    const blank = await call('PUT', `/apps/sjo/invoices/${encodeURIComponent(id)}/details`, {
       sjoFields: { countryId: detail.json.sjoFields.country.id, businessUnitId: 1, erpSystemId: sap.id, idFiscal: ' ' },
     });
     assert.equal(blank.status, 400, 'ID Fiscal is required');
 
     const gp = (await call('GET', '/apps/GP/invoices?limit=1')).json.data[0];
     assert.equal(gp.sjoFields, null);
-    const notSjo = await call('PUT', `/invoices/${encodeURIComponent(gp.id)}/details`, {
+    const notSjo = await call('PUT', `/apps/GP/invoices/${encodeURIComponent(gp.id)}/details`, {
       sjoFields: { countryId: 1, businessUnitId: 1, erpSystemId: 1, idFiscal: '1' },
     });
     assert.equal(notSjo.status, 400, 'SJO fields only on SJO invoices');
+  });
+
+  it('each app has its own invoice table: ids are unique per app, CCPP is GPP only', async () => {
+    const id = `IN-${localTag}-SHARED`;
+    const sjo = await call('POST', '/apps/sjo/invoices', { id, country: 'NIC', businessUnit: 'CFN', erp: 'JDE', idFiscal: '777' });
+    assert.equal(sjo.status, 201, sjo.text);
+    const gp = await call('POST', '/apps/GP/invoices', { id, vendorName: 'Molinos Agro S.A.', cuit: '30-50001234-9', amount: 10 });
+    assert.equal(gp.status, 201, 'the same id can exist in another app');
+    const again = await call('POST', '/apps/GP/invoices', { id, vendorName: 'Molinos Agro S.A.', cuit: '30-50001234-9', amount: 10 });
+    assert.equal(again.status, 409, 'but not twice in one app');
+
+    const gpDetail = await call('GET', `/apps/GP/invoices/${id}`);
+    const sjoDetail = await call('GET', `/apps/sjo/invoices/${id}`);
+    assert.equal(gpDetail.json.amount, '10.00');
+    assert.equal(sjoDetail.json.sjoFields.idFiscal, '777');
+    assert.equal((await call('GET', `/apps/rospbu/invoices/${id}`)).status, 404, 'not in ROSPBU');
+
+    assert.equal((await call('GET', `/apps/GP/invoices/${id}/ccpp`)).status, 200);
+    assert.equal((await call('GET', `/apps/sjo/invoices/${id}/ccpp`)).status, 404, 'CCPP is GPP only');
+
+    // Signed attachment URLs carry the app: a GP link opens, the same id under another app does not
+    const withPdf = (await call('GET', '/apps/GP/invoices?limit=50')).json.data.find((i: { pdfUrl: string | null }) => i.pdfUrl);
+    const file = await fetch(`${API}${withPdf.pdfUrl}`);
+    assert.equal(file.status, 200);
+    assert.equal((await fetch(`${API}${withPdf.pdfUrl.replace('/gpp/', '/sjo/')}`)).status, 403, 'signature binds the app');
   });
 
   it('non-admins cannot reach the integration API', async () => {
@@ -190,7 +217,7 @@ describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API 
     const sjo = await call('GET', `/apps/sjo/invoices?search=${tag}&limit=20`);
     assert.equal(gp.json.totalItems, sap.invoices.filter((i) => i.CompanyCode === '1010').length);
     assert.equal(sjo.json.totalItems, sap.invoices.filter((i) => i.CompanyCode === '2020').length);
-    const detail = await call('GET', `/invoices/${encodeURIComponent(gp.json.data[0].id)}`);
+    const detail = await call('GET', `/apps/GP/invoices/${encodeURIComponent(gp.json.data[0].id)}`);
     assert.equal(detail.status, 200);
     assert.equal(detail.json.status, 'Pending');
 

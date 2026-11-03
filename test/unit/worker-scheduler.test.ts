@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
-import { IntegrationError } from '../../src/integrations/core/errors.js';
-import { silentLogger } from '../../src/integrations/core/logger.js';
-import { SyncScheduler } from '../../src/integrations/jobs/sync-scheduler.js';
-import { SyncWorker } from '../../src/integrations/jobs/sync-worker.js';
+import { IntegrationError } from '../../src/modules/common/integrations/engine/core/errors.js';
+import { silentLogger } from '../../src/modules/common/integrations/engine/core/logger.js';
+import { SyncScheduler } from '../../src/modules/common/integrations/engine/jobs/sync-scheduler.js';
+import { SyncWorker } from '../../src/modules/common/integrations/engine/jobs/sync-worker.js';
 import { feedMapping, feedProvider, feedRecord, feedState, resetFeed } from '../support/fake-provider.js';
 import { InMemoryJobQueue, InMemorySyncStore, createTestOrchestrator, integrationRecord, profileRecord } from '../support/fakes.js';
 

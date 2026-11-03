@@ -12,7 +12,7 @@ database (`database/postgres`), frontend (`Settings > SAP Configuration`).
 | Frontend | React 19 + Vite, react-router 7, axios `apiClient` (`/api`, 5 s timeout), `LanguageContext` (en/es), plain CSS theme | New screens follow `pages/settings/*` patterns (Modal, ConfirmDialog, Pager, badges, toasts) |
 | Backend | Express 5 + TypeScript (NodeNext), zod validation (`utils/validate.parse`), `HttpError`, JWT `authenticate`, `requireAdmin` | New module `modules/integrations` mounted at `/api/integrations`, admin-only |
 | Data access | PostgreSQL (Supabase), schema `app`; **all access through `app.usp_*` functions** returning `app.udt_*` composite types; errors `CA400/CA404/CA409` → HTTP | Integration persistence follows the same function + type convention |
-| Invoice model | `app.invoices` (module → application GP / sjo / rospbu), vendor by **CUIT** (unique), status from `app.statuses`, workflow fields (team, assigned user, process) | SAP invoices land in the same table, targeted at a GP or SJO module; workflow fields are never overwritten by sync |
+| Invoice model | one table per app: `gpp.gpp_invoices`, `sjo.sjo_invoices`, `rospbu.rospbu_invoices` (profile module → application → schema), vendor by **CUIT** (unique), status from `app.statuses`, workflow fields (team, assigned user, process) | SAP invoices land in the same table, targeted at a GP or SJO module; workflow fields are never overwritten by sync |
 | Invoice creation | `usp_invoice_create_batch` (all-or-nothing, daily `max_invoices_limit`) | Sync uses a dedicated idempotent upsert function instead (row-level outcomes, no daily UI limit) |
 | Background jobs | **None** (no queue, scheduler, Redis) | See §3 – PostgreSQL-backed queue + in-process worker; no new infrastructure |
 | Logging / monitoring | `console` + `morgan` | Small structured JSON logger with secret redaction; job metrics in the database |
@@ -98,7 +98,7 @@ flowchart LR
 | Provider Registry (Factory) | `integrations/core/provider-registry.ts` | Map `provider_type` → provider; adding a provider = registering it | – |
 
 Core business logic (GP / SJO workflow, invoice detail, team assignment) has **no dependency** on the
-integration code; the only shared surface is the `app.invoices` table plus `invoice_external_refs`.
+integration code; the only shared surface is each app's invoices table plus its `invoice_external_refs` (written by `<app>.usp_sync_invoice_apply`, called per row by `app.usp_sync_page_apply`).
 
 ## 5. Synchronization flow
 
@@ -150,9 +150,9 @@ stateDiagram-v2
 
 ## 6. Database changes
 
-New scripts (idempotent, through `deploy_schema.sql`): `tables/23_integrations.sql` …
-`tables/28_integration_audit_log.sql`, response types `udt_integration_*`, functions under
-`procedures/integrations/`.
+New scripts (idempotent, through `deploy_schema.sql`): `common/integrations/tables/23_integrations.sql` …
+`common/integrations/tables/28_integration_audit_log.sql`, response types `udt_integration_*`, functions under
+`common/integrations/procedures/`.
 
 ```mermaid
 erDiagram

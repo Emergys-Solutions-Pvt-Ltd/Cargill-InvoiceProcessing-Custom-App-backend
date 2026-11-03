@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { computeNextRun, parseCron, retryDelayMs, scheduleSchema, zonedTimeToUtc } from '../../src/integrations/core/schedule.js';
+import { computeNextRun, parseCron, retryDelayMs, scheduleSchema, zonedTimeToUtc } from '../../src/modules/common/integrations/engine/core/schedule.js';
 
 const at = (iso: string) => new Date(iso);
 

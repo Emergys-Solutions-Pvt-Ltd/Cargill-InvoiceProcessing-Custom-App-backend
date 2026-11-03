@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { apiKeyAuth, basicAuth, oauth2ClientCredentials } from '../../src/integrations/core/auth/strategies.js';
-import { HttpClient } from '../../src/integrations/core/http/http-client.js';
-import { IntegrationError } from '../../src/integrations/core/errors.js';
+import { apiKeyAuth, basicAuth, oauth2ClientCredentials } from '../../src/modules/common/integrations/engine/core/auth/strategies.js';
+import { HttpClient } from '../../src/modules/common/integrations/engine/core/http/http-client.js';
+import { IntegrationError } from '../../src/modules/common/integrations/engine/core/errors.js';
 
 const tokenServer = (status = 200, expiresIn = 3600) => {
   const requests: { headers: Headers; body: string }[] = [];

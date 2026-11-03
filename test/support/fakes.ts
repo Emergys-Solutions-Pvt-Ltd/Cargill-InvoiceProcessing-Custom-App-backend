@@ -1,13 +1,13 @@
-import { AuthStrategyRegistry } from '../../src/integrations/core/auth/auth-strategy.js';
-import { builtInAuthStrategies } from '../../src/integrations/core/auth/strategies.js';
-import { ProviderContextFactory } from '../../src/integrations/core/context-factory.js';
-import { SyncEvents } from '../../src/integrations/core/events.js';
-import type { ConfigDependencies } from '../../src/integrations/core/integration-config.js';
-import { silentLogger } from '../../src/integrations/core/logger.js';
-import { ProviderRegistry } from '../../src/integrations/core/provider-registry.js';
-import { AesGcmSecretStore } from '../../src/integrations/core/secrets/secret-store.js';
-import type { IntegrationProvider, SourceDocument } from '../../src/integrations/core/contracts.js';
-import { SyncOrchestrator } from '../../src/integrations/sync/sync-orchestrator.js';
+import { AuthStrategyRegistry } from '../../src/modules/common/integrations/engine/core/auth/auth-strategy.js';
+import { builtInAuthStrategies } from '../../src/modules/common/integrations/engine/core/auth/strategies.js';
+import { ProviderContextFactory } from '../../src/modules/common/integrations/engine/core/context-factory.js';
+import { SyncEvents } from '../../src/modules/common/integrations/engine/core/events.js';
+import type { ConfigDependencies } from '../../src/modules/common/integrations/engine/core/integration-config.js';
+import { silentLogger } from '../../src/modules/common/integrations/engine/core/logger.js';
+import { ProviderRegistry } from '../../src/modules/common/integrations/engine/core/provider-registry.js';
+import { AesGcmSecretStore } from '../../src/modules/common/integrations/engine/core/secrets/secret-store.js';
+import type { IntegrationProvider, SourceDocument } from '../../src/modules/common/integrations/engine/core/contracts.js';
+import { SyncOrchestrator } from '../../src/modules/common/integrations/engine/sync/sync-orchestrator.js';
 import {
   QueueConflictError,
   type AttachmentStore,
@@ -21,7 +21,7 @@ import {
   type RowOutcome,
   type SyncErrorInput,
   type SyncStore,
-} from '../../src/integrations/sync/ports.js';
+} from '../../src/modules/common/integrations/engine/sync/ports.js';
 
 /** Test doubles mirroring the semantics of the PostgreSQL functions (see database/postgres/tests). */
 
@@ -269,11 +269,11 @@ export class InMemoryAttachmentStore implements AttachmentStore {
   readonly saved = new Map<string, SourceDocument & { sourceKey: string }>();
   failFor = new Set<string>();
 
-  async withoutAttachment(codes: string[]) {
+  async withoutAttachment(_moduleSlug: string, codes: string[]) {
     return new Set(codes.filter((c) => !this.saved.has(c)));
   }
 
-  async save(invoiceCode: string, document: SourceDocument, sourceKey: string) {
+  async save(_moduleSlug: string, invoiceCode: string, document: SourceDocument, sourceKey: string) {
     if (this.failFor.has(invoiceCode)) throw new Error('disk full');
     this.saved.set(invoiceCode, { ...document, sourceKey });
   }

@@ -1,11 +1,9 @@
-import { env } from '../src/config/env.js';
-import { closePool } from '../src/db/pool.js';
-import {
-  listAttachmentsByProvider,
-  moveAttachmentStorage,
-  type AttachmentRow,
-} from '../src/modules/invoices/invoices.repository.js';
-import { attachmentStorage, storageReaderFor, writeStorage } from '../src/storage/index.js';
+import { env } from '../src/core/config/env.js';
+import { closePool } from '../src/core/db/pool.js';
+import { listAttachmentsByProvider, moveAttachmentStorage } from '../src/modules/common/attachments/attachments.dal.js';
+import type { AttachmentRow } from '../src/modules/common/attachments/attachments.models.js';
+import { APP_SCHEMAS } from '../src/modules/common/apps/apps.models.js';
+import { attachmentStorage, storageReaderFor, writeStorage } from '../src/modules/common/attachments/storage/index.js';
 
 /**
  * Copies attachments stored on local disk (rows with storage_provider = 'local') to the S3 bucket,
@@ -44,44 +42,47 @@ const main = async () => {
   }
 
   const totals = { copied: 0, missing: 0, failed: 0, skipped: 0 };
-  let afterId = 0;
   let processed = 0;
   console.log(`${dryRun ? '[dry run] ' : ''}Copying local attachments to s3://${writeStorage.bucket}`);
-  for (;;) {
-    const rows = await listAttachmentsByProvider('local', afterId, 100);
-    if (rows.length === 0 || processed >= limit) break;
-    for (const row of rows) {
-      afterId = row.id;
-      if (processed >= limit) break;
-      processed += 1;
-      const target = attachmentStorage.keyFor(row.applicationCode, row.fileName, row.uploadedAt);
-      if (dryRun) {
-        console.log(`#${row.id} ${row.storagePath} -> ${target}`);
-        continue;
-      }
-      let content: Buffer;
-      try {
-        content = await readLocal(row);
-      } catch {
-        totals.missing += 1;
-        console.warn(`#${row.id} local file missing: ${row.storagePath}`);
-        continue;
-      }
-      try {
-        const file = await attachmentStorage.upload(row.applicationCode, row.fileName, content, row.mimeType, row.uploadedAt);
-        const moved = await moveAttachmentStorage(row.id, 'local', {
-          provider: 's3', bucket: file.bucket, path: file.key, sha256: file.sha256, etag: file.etag,
-        });
-        if (moved) {
-          totals.copied += 1;
-          console.log(`#${row.id} -> s3://${file.bucket}/${file.key}`);
-        } else {
-          totals.skipped += 1;
-          await writeStorage.delete(file.key).catch(() => {});
+  // Every app keeps its attachments in its own table (<app>.invoice_attachments, ids unique per app)
+  for (const appSchema of APP_SCHEMAS) {
+    let afterId = 0;
+    for (;;) {
+      const rows = await listAttachmentsByProvider(appSchema, 'local', afterId, 100);
+      if (rows.length === 0 || processed >= limit) break;
+      for (const row of rows) {
+        afterId = row.id;
+        if (processed >= limit) break;
+        processed += 1;
+        const target = attachmentStorage.keyFor(row.applicationCode, row.fileName, row.uploadedAt);
+        if (dryRun) {
+          console.log(`${appSchema} #${row.id} ${row.storagePath} -> ${target}`);
+          continue;
         }
-      } catch (err) {
-        totals.failed += 1;
-        console.error(`#${row.id} failed: ${err instanceof Error ? err.message : String(err)}`);
+        let content: Buffer;
+        try {
+          content = await readLocal(row);
+        } catch {
+          totals.missing += 1;
+          console.warn(`${appSchema} #${row.id} local file missing: ${row.storagePath}`);
+          continue;
+        }
+        try {
+          const file = await attachmentStorage.upload(row.applicationCode, row.fileName, content, row.mimeType, row.uploadedAt);
+          const moved = await moveAttachmentStorage(appSchema, row.id, 'local', {
+            provider: 's3', bucket: file.bucket, path: file.key, sha256: file.sha256, etag: file.etag,
+          });
+          if (moved) {
+            totals.copied += 1;
+            console.log(`${appSchema} #${row.id} -> s3://${file.bucket}/${file.key}`);
+          } else {
+            totals.skipped += 1;
+            await writeStorage.delete(file.key).catch(() => {});
+          }
+        } catch (err) {
+          totals.failed += 1;
+          console.error(`${appSchema} #${row.id} failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
     }
   }

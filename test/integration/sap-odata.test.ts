@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
-import { AuthStrategyRegistry } from '../../src/integrations/core/auth/auth-strategy.js';
-import { builtInAuthStrategies } from '../../src/integrations/core/auth/strategies.js';
-import { ProviderContextFactory } from '../../src/integrations/core/context-factory.js';
-import { resolveIntegrationConfig } from '../../src/integrations/core/integration-config.js';
-import { silentLogger } from '../../src/integrations/core/logger.js';
-import { ProviderRegistry } from '../../src/integrations/core/provider-registry.js';
-import { AesGcmSecretStore } from '../../src/integrations/core/secrets/secret-store.js';
-import { sapODataProvider } from '../../src/integrations/providers/sap-odata/sap-odata.provider.js';
-import type { IntegrationRecord } from '../../src/integrations/sync/ports.js';
+import { AuthStrategyRegistry } from '../../src/modules/common/integrations/engine/core/auth/auth-strategy.js';
+import { builtInAuthStrategies } from '../../src/modules/common/integrations/engine/core/auth/strategies.js';
+import { ProviderContextFactory } from '../../src/modules/common/integrations/engine/core/context-factory.js';
+import { resolveIntegrationConfig } from '../../src/modules/common/integrations/engine/core/integration-config.js';
+import { silentLogger } from '../../src/modules/common/integrations/engine/core/logger.js';
+import { ProviderRegistry } from '../../src/modules/common/integrations/engine/core/provider-registry.js';
+import { AesGcmSecretStore } from '../../src/modules/common/integrations/engine/core/secrets/secret-store.js';
+import { sapODataProvider } from '../../src/modules/common/integrations/engine/providers/sap-odata/sap-odata.provider.js';
+import type { IntegrationRecord } from '../../src/modules/common/integrations/engine/sync/ports.js';
 import { MockSapServer } from '../../scripts/mock-sap/mock-sap-server.js';
 import { InMemorySyncStore, TEST_KEY, control, createTestOrchestrator, integrationRecord, jobRecord, profileRecord, testConfigDeps } from '../support/fakes.js';
 

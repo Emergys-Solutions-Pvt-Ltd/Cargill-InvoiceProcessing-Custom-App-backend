@@ -307,7 +307,7 @@
           "Invoices"
         ],
         "summary": "Create one invoice",
-        "description": "Creates the vendor (by CUIT) and country station when they do not exist yet. Counts toward the app's daily invoice limit.",
+        "description": "Creates the vendor (by CUIT) and country station when they do not exist yet. Counts toward the app's daily invoice limit. SJO app: Country, BU, ERP and ID Fiscal are required and vendor / CUIT / amount are optional (see InvoiceInput).",
         "requestBody": {
           "required": true,
           "content": {
@@ -397,8 +397,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}": {
+    "/apps/{appId}/invoices/{invoiceId}": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         }
@@ -407,7 +410,8 @@
         "tags": [
           "Invoices"
         ],
-        "summary": "Invoice Detail (header, attachments, line items, CCPPs)",
+        "summary": "Invoice Detail (header, attachments, line items, app fields)",
+        "description": "Every app has its own invoice table; invoice ids are unique per app, so the app is part of the path. GPP adds ccpps / sfFields, SJO sjoFields.",
         "responses": {
           "200": {
             "description": "OK",
@@ -431,8 +435,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}/attachments": {
+    "/apps/{appId}/invoices/{invoiceId}/attachments": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         }
@@ -544,8 +551,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}/pdf-attachment": {
+    "/apps/{appId}/invoices/{invoiceId}/pdf-attachment": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         }
@@ -578,8 +588,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}/status": {
+    "/apps/{appId}/invoices/{invoiceId}/status": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         }
@@ -655,8 +668,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}/details": {
+    "/apps/{appId}/invoices/{invoiceId}/details": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         }
@@ -711,8 +727,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}/send-to-previous-team": {
+    "/apps/{appId}/invoices/{invoiceId}/send-to-previous-team": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         }
@@ -765,8 +784,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}/ccpp": {
+    "/apps/{appId}/invoices/{invoiceId}/ccpp": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         }
@@ -775,7 +797,7 @@
         "tags": [
           "Invoices"
         ],
-        "summary": "Invoice Detail \"CCPP\" tab - list rows (condensed columns)",
+        "summary": "GPP Invoice Detail \"CCPP\" tab - list rows (condensed columns)",
         "responses": {
           "200": {
             "description": "OK",
@@ -805,7 +827,7 @@
         "tags": [
           "Invoices"
         ],
-        "summary": "Invoice Detail \"CCPP\" tab - add a row",
+        "summary": "GPP Invoice Detail \"CCPP\" tab - add a row",
         "requestBody": {
           "required": true,
           "content": {
@@ -850,8 +872,11 @@
         }
       }
     },
-    "/invoices/{invoiceId}/ccpp/{ccppId}": {
+    "/apps/{appId}/invoices/{invoiceId}/ccpp/{ccppId}": {
       "parameters": [
+        {
+          "$ref": "#/components/parameters/AppId"
+        },
         {
           "$ref": "#/components/parameters/InvoiceId"
         },
@@ -869,7 +894,7 @@
         "tags": [
           "Invoices"
         ],
-        "summary": "Invoice Detail \"CCPP\" tab - row-expand detail (all fields)",
+        "summary": "GPP Invoice Detail \"CCPP\" tab - row-expand detail (all fields)",
         "responses": {
           "200": {
             "description": "OK",
@@ -896,7 +921,7 @@
         "tags": [
           "Invoices"
         ],
-        "summary": "Invoice Detail \"CCPP\" tab - edit a row",
+        "summary": "GPP Invoice Detail \"CCPP\" tab - edit a row",
         "requestBody": {
           "required": true,
           "content": {
@@ -989,15 +1014,28 @@
         }
       }
     },
-    "/files/attachments/{id}": {
+    "/files/attachments/{app}/{id}": {
       "get": {
         "tags": [
           "Files"
         ],
         "summary": "Download / preview an attachment via a signed URL",
         "security": [],
-        "description": "Use the `url` values returned by the invoice endpoints; links expire (FILE_URL_TTL_SECONDS).",
+        "description": "Use the `url` values returned by the invoice endpoints; links expire (FILE_URL_TTL_SECONDS). Attachment ids are unique per app.",
         "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "gpp",
+                "sjo",
+                "rospbu"
+              ]
+            }
+          },
           {
             "name": "id",
             "in": "path",
@@ -1636,7 +1674,8 @@
               "business-units",
               "teams",
               "statuses",
-              "processes"
+              "processes",
+              "erp-systems"
             ]
           }
         }
@@ -1782,7 +1821,8 @@
               "business-units",
               "teams",
               "statuses",
-              "processes"
+              "processes",
+              "erp-systems"
             ]
           }
         }
@@ -1842,7 +1882,8 @@
               "business-units",
               "teams",
               "statuses",
-              "processes"
+              "processes",
+              "erp-systems"
             ]
           }
         },
@@ -3312,10 +3353,13 @@
             "example": "ARG - Rosario Port"
           },
           "vendorName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "NULL for SJO invoices"
           },
           "cuit": {
             "type": "string",
+            "nullable": true,
             "example": "30-50001234-9"
           },
           "status": {
@@ -3345,6 +3389,72 @@
           },
           "pdfAttachment": {
             "$ref": "#/components/schemas/PdfAttachment"
+          },
+          "assignedUser": {
+            "$ref": "#/components/schemas/NamedRef"
+          },
+          "sjoFields": {
+            "$ref": "#/components/schemas/SjoFields"
+          }
+        }
+      },
+      "LookupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "example": "NIC"
+          },
+          "name": {
+            "type": "string",
+            "example": "Nicaragua"
+          }
+        }
+      },
+      "SjoFields": {
+        "type": "object",
+        "nullable": true,
+        "description": "SJO Invoice Processing fields; null for GP / ROSPBU invoices",
+        "properties": {
+          "country": {
+            "$ref": "#/components/schemas/LookupRef"
+          },
+          "businessUnit": {
+            "$ref": "#/components/schemas/LookupRef"
+          },
+          "erpSystem": {
+            "$ref": "#/components/schemas/LookupRef"
+          },
+          "idFiscal": {
+            "type": "string",
+            "example": "135266470"
+          },
+          "abNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "39102783"
+          },
+          "abName": {
+            "type": "string",
+            "nullable": true,
+            "example": "CITIBANK NA"
+          },
+          "flowTurnDown": {
+            "type": "boolean"
+          },
+          "criticalVendor": {
+            "type": "boolean"
+          },
+          "urgentInvoice": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
           }
         }
       },
@@ -3476,7 +3586,7 @@
       },
       "CcppListItem": {
         "type": "object",
-        "description": "Condensed columns the CCPP tab list table renders. GET /invoices/{invoiceId}/ccpp.",
+        "description": "Condensed columns the CCPP tab list table renders. GET /apps/{appId}/invoices/{invoiceId}/ccpp (GPP).",
         "properties": {
           "id": {
             "type": "integer"
@@ -3514,7 +3624,7 @@
       },
       "CcppDetail": {
         "type": "object",
-        "description": "Full \"GP CCPP\" row (legacy Salesforce object, 55-field export - see app.invoice_ccpps). GET /invoices/{invoiceId}/ccpp/{ccppId} and the POST/PUT response. Link Invoice / Link Invoice CUIT / Linked Invoice Name are not included - the row is already scoped to its one invoice via the URL.",
+        "description": "Full \"GP CCPP\" row (legacy Salesforce object, 55-field export - see gpp.invoice_ccpps). GET /apps/{appId}/invoices/{invoiceId}/ccpp/{ccppId} and the POST/PUT response. Link Invoice / Link Invoice CUIT / Linked Invoice Name are not included - the row is already scoped to its one invoice via the URL.",
         "properties": {
           "id": {
             "type": "integer"
@@ -3778,7 +3888,7 @@
           "product",
           "status"
         ],
-        "description": "Body for POST/PUT /invoices/{invoiceId}/ccpp[/{ccppId}]. Only product and status are required.",
+        "description": "Body for POST/PUT /apps/{appId}/invoices/{invoiceId}/ccpp[/{ccppId}]. Only product and status are required.",
         "properties": {
           "product": {
             "type": "string",
@@ -4214,7 +4324,7 @@
       },
       "SfFields": {
         "type": "object",
-        "description": "Legacy Salesforce \"GP Invoice\" fields with no other home (app.invoice_sf_fields). Read-only: null until the invoice has a row; no write path yet.",
+        "description": "Legacy Salesforce \"GP Invoice\" fields with no other home (gpp.invoice_sf_fields). Read-only: null until the invoice has a row; no write path yet.",
         "properties": {
           "invoice1a2aCancel": {
             "type": "string",
@@ -4501,11 +4611,7 @@
       },
       "InvoiceInput": {
         "type": "object",
-        "required": [
-          "vendorName",
-          "cuit",
-          "amount"
-        ],
+        "description": "Required: vendorName, cuit, amount - except in the SJO app, where country, businessUnit, erp and idFiscal are required instead.",
         "properties": {
           "id": {
             "type": "string",
@@ -4567,6 +4673,61 @@
             "type": "string",
             "nullable": true,
             "example": "2026-10-21 10:00 AM"
+          },
+          "assignedUserId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Assign To: active user with access to the app"
+          },
+          "country": {
+            "type": "string",
+            "description": "SJO: code or name (Configuration > Countries)",
+            "example": "NIC"
+          },
+          "businessUnit": {
+            "type": "string",
+            "description": "SJO: code or name (Configuration > Business Units)",
+            "example": "CFN"
+          },
+          "erp": {
+            "type": "string",
+            "description": "SJO: code or name (Configuration > ERP Systems)",
+            "example": "JDE"
+          },
+          "idFiscal": {
+            "type": "string",
+            "maxLength": 30,
+            "description": "SJO",
+            "example": "135266470"
+          },
+          "abNumber": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 30,
+            "description": "SJO",
+            "example": "39102783"
+          },
+          "abName": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 255,
+            "description": "SJO",
+            "example": "CITIBANK NA"
+          },
+          "flowTurnDown": {
+            "type": "boolean",
+            "default": false,
+            "description": "SJO; also accepts yes/no, x, 1/0"
+          },
+          "criticalVendor": {
+            "type": "boolean",
+            "default": false,
+            "description": "SJO"
+          },
+          "urgentInvoice": {
+            "type": "boolean",
+            "default": false,
+            "description": "SJO"
           }
         }
       },
@@ -4973,6 +5134,50 @@
           "assignedUserId": {
             "type": "integer",
             "nullable": true
+          },
+          "sjoFields": {
+            "type": "object",
+            "description": "SJO invoices only; omit to leave the SJO fields unchanged",
+            "required": [
+              "countryId",
+              "businessUnitId",
+              "erpSystemId",
+              "idFiscal"
+            ],
+            "properties": {
+              "countryId": {
+                "type": "integer"
+              },
+              "businessUnitId": {
+                "type": "integer"
+              },
+              "erpSystemId": {
+                "type": "integer"
+              },
+              "idFiscal": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "abNumber": {
+                "type": "string",
+                "nullable": true,
+                "maxLength": 30
+              },
+              "abName": {
+                "type": "string",
+                "nullable": true,
+                "maxLength": 255
+              },
+              "flowTurnDown": {
+                "type": "boolean"
+              },
+              "criticalVendor": {
+                "type": "boolean"
+              },
+              "urgentInvoice": {
+                "type": "boolean"
+              }
+            }
           }
         }
       },

@@ -2,19 +2,19 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import express from 'express';
-import { errorHandler } from '../../src/middleware/errorHandler.js';
-import { requireAdmin } from '../../src/middleware/auth.js';
-import { ProviderContextFactory } from '../../src/integrations/core/context-factory.js';
-import { silentLogger } from '../../src/integrations/core/logger.js';
-import { ProviderRegistry } from '../../src/integrations/core/provider-registry.js';
-import { AesGcmSecretStore } from '../../src/integrations/core/secrets/secret-store.js';
-import { sapODataProvider } from '../../src/integrations/providers/sap-odata/sap-odata.provider.js';
-import type { IntegrationRecord } from '../../src/integrations/sync/ports.js';
-import { createIntegrationsRouter } from '../../src/modules/integrations/integrations.routes.js';
-import { IntegrationService } from '../../src/modules/integrations/integrations.service.js';
-import type * as Repository from '../../src/modules/integrations/integrations.repository.js';
-import type { IntegrationWrite } from '../../src/modules/integrations/integrations.repository.js';
-import { HttpError } from '../../src/utils/httpError.js';
+import { errorHandler } from '../../src/core/http/error-handler.js';
+import { requireAdmin } from '../../src/modules/auth/auth.middleware.js';
+import { ProviderContextFactory } from '../../src/modules/common/integrations/engine/core/context-factory.js';
+import { silentLogger } from '../../src/modules/common/integrations/engine/core/logger.js';
+import { ProviderRegistry } from '../../src/modules/common/integrations/engine/core/provider-registry.js';
+import { AesGcmSecretStore } from '../../src/modules/common/integrations/engine/core/secrets/secret-store.js';
+import { sapODataProvider } from '../../src/modules/common/integrations/engine/providers/sap-odata/sap-odata.provider.js';
+import type { IntegrationRecord } from '../../src/modules/common/integrations/engine/sync/ports.js';
+import { createIntegrationsRouter } from '../../src/modules/common/integrations/integrations.controller.js';
+import { IntegrationService } from '../../src/modules/common/integrations/integrations.service.js';
+import type * as Repository from '../../src/modules/common/integrations/integrations.dal.js';
+import type { IntegrationWrite } from '../../src/modules/common/integrations/integrations.models.js';
+import { HttpError } from '../../src/core/http/http-error.js';
 import { MockSapServer } from '../../scripts/mock-sap/mock-sap-server.js';
 import { InMemoryJobQueue, TEST_KEY, baseMapping, integrationRecord, profileRecord, testConfigDeps } from '../support/fakes.js';
 
@@ -134,7 +134,7 @@ describe('/api/integrations', () => {
           config,
           queue,
           resolveModule: async (slug) =>
-            ['GP', 'sjo'].includes(slug) ? { moduleId: slug === 'GP' ? 1 : 5, slug, name: slug, invoicePrefix: slug.toUpperCase(), applicationId: 1, applicationCode: slug } : null,
+            ['GP', 'sjo'].includes(slug) ? { moduleId: slug === 'GP' ? 1 : 5, slug, name: slug, invoicePrefix: slug.toUpperCase(), applicationId: 1, applicationCode: slug, appSchema: slug === 'GP' ? 'gpp' : 'sjo' } : null,
         }),
         () => ({ workerEnabled: false, workerId: null, metrics: {} }),
       )(req, res, next),

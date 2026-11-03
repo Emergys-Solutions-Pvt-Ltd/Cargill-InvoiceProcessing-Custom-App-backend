@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { z } from 'zod';
-import { AuthStrategyRegistry, type AuthStrategyFactory } from '../../src/integrations/core/auth/auth-strategy.js';
-import { builtInAuthStrategies } from '../../src/integrations/core/auth/strategies.js';
-import { resolveIntegrationConfig } from '../../src/integrations/core/integration-config.js';
-import { ProviderRegistry } from '../../src/integrations/core/provider-registry.js';
-import { sapODataProvider } from '../../src/integrations/providers/sap-odata/sap-odata.provider.js';
+import { AuthStrategyRegistry, type AuthStrategyFactory } from '../../src/modules/common/integrations/engine/core/auth/auth-strategy.js';
+import { builtInAuthStrategies } from '../../src/modules/common/integrations/engine/core/auth/strategies.js';
+import { resolveIntegrationConfig } from '../../src/modules/common/integrations/engine/core/integration-config.js';
+import { ProviderRegistry } from '../../src/modules/common/integrations/engine/core/provider-registry.js';
+import { sapODataProvider } from '../../src/modules/common/integrations/engine/providers/sap-odata/sap-odata.provider.js';
 import { feedMapping, feedProvider, feedRecord, resetFeed } from '../support/fake-provider.js';
 import { InMemorySyncStore, control, createTestOrchestrator, integrationRecord, jobRecord, profileRecord, testConfigDeps } from '../support/fakes.js';
 

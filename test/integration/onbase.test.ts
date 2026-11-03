@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
-import { ProviderContextFactory } from '../../src/integrations/core/context-factory.js';
-import { resolveIntegrationConfig } from '../../src/integrations/core/integration-config.js';
-import { silentLogger } from '../../src/integrations/core/logger.js';
-import { ProviderRegistry } from '../../src/integrations/core/provider-registry.js';
-import { AesGcmSecretStore } from '../../src/integrations/core/secrets/secret-store.js';
-import { normaliseKeywords, normaliseResultItem } from '../../src/integrations/providers/onbase/onbase.client.js';
-import { onbaseProvider } from '../../src/integrations/providers/onbase/onbase.provider.js';
-import { keywordKey } from '../../src/integrations/providers/onbase/onbase.schemas.js';
-import { onbaseTemplates } from '../../src/integrations/providers/onbase/onbase.templates.js';
-import type { IntegrationRecord } from '../../src/integrations/sync/ports.js';
+import { ProviderContextFactory } from '../../src/modules/common/integrations/engine/core/context-factory.js';
+import { resolveIntegrationConfig } from '../../src/modules/common/integrations/engine/core/integration-config.js';
+import { silentLogger } from '../../src/modules/common/integrations/engine/core/logger.js';
+import { ProviderRegistry } from '../../src/modules/common/integrations/engine/core/provider-registry.js';
+import { AesGcmSecretStore } from '../../src/modules/common/integrations/engine/core/secrets/secret-store.js';
+import { normaliseKeywords, normaliseResultItem } from '../../src/modules/common/integrations/engine/providers/onbase/onbase.client.js';
+import { onbaseProvider } from '../../src/modules/common/integrations/engine/providers/onbase/onbase.provider.js';
+import { keywordKey } from '../../src/modules/common/integrations/engine/providers/onbase/onbase.schemas.js';
+import { onbaseTemplates } from '../../src/modules/common/integrations/engine/providers/onbase/onbase.templates.js';
+import type { IntegrationRecord } from '../../src/modules/common/integrations/engine/sync/ports.js';
 import { MockOnBaseServer } from '../../scripts/mock-onbase/mock-onbase-server.js';
 import {
   InMemoryAttachmentStore,

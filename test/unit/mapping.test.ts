@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { ProfileConfig } from '../../src/integrations/core/contracts.js';
+import type { ProfileConfig } from '../../src/modules/common/integrations/engine/core/contracts.js';
 import {
   evaluateCancellation,
   fieldMappingSchema,
@@ -8,7 +8,7 @@ import {
   parseSourceDate,
   renderInvoiceCode,
   type FieldMapping,
-} from '../../src/integrations/core/mapping/field-mapper.js';
+} from '../../src/modules/common/integrations/engine/core/mapping/field-mapper.js';
 import { baseMapping } from '../support/fakes.js';
 
 const profile = (overrides: Partial<ProfileConfig> = {}): ProfileConfig => ({

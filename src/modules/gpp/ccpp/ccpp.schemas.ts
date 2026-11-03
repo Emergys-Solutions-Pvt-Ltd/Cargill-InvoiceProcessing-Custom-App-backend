@@ -1,0 +1,72 @@
+import { z } from 'zod';
+
+// ---- Request validation for the GPP CCPP tab ----
+
+const nullableStr = (max: number) =>
+  z.string().trim().max(max).nullable().optional().transform((v) => v || null);
+const nullableNum = z.coerce.number().nullable().optional().transform((v) => v ?? null);
+
+/** Legacy Salesforce "GP CCPP" fields - everything but product/status is optional. */
+export const ccppBody = z.object({
+  product: z.string().trim().min(1).max(100),
+  status: z.string().trim().min(1).max(50),
+  legalDocIssuer: nullableStr(200),
+  value: nullableNum,
+  km: nullableNum,
+  tons: nullableNum,
+  unitRate: nullableNum,
+  kmFc: nullableNum,
+  tonsFc: nullableNum,
+  thirdJurisdiction: nullableStr(255),
+  ab: nullableStr(20),
+  aux: nullableStr(20),
+  bp: nullableStr(50),
+  closedQuantity: nullableNum,
+  pendingQuantity: nullableNum,
+  totalQuantity: nullableNum,
+  cc: nullableStr(50),
+  cia: nullableStr(20),
+  withholdingCode: nullableStr(255),
+  withholdingConcept: nullableStr(255),
+  matching: nullableStr(20),
+  account: nullableStr(20),
+  cuit: nullableStr(20),
+  lineDescription: nullableStr(10000),
+  receiptDetail: nullableStr(255),
+  status1: nullableStr(50),
+  status2: nullableStr(50),
+  receiptDate: nullableStr(50),
+  gcia: nullableStr(100),
+  name: nullableStr(100),
+  iibbDestination: nullableStr(100),
+  iibbOrigin: nullableStr(100),
+  closedAmount: nullableStr(20),
+  lineAmount: nullableNum,
+  matchedAmount: nullableStr(20),
+  pendingAmount: nullableNum,
+  orderTotalAmount: nullableNum,
+  vat: nullableStr(100),
+  line: nullableNum,
+  currency: nullableStr(10),
+  municipality: nullableStr(100),
+  orderNumber: nullableStr(20),
+  receiptNumber: nullableStr(20),
+  observation: nullableStr(10000),
+  originDestinationDrei: nullableStr(255),
+  ownerLegacyId: nullableStr(1000),
+  praclo: nullableStr(20),
+  praptd: nullableStr(20),
+  prdgl: nullableStr(50),
+  province: nullableStr(255),
+  pruorg: nullableStr(20),
+  suss: nullableStr(100),
+  taxArea: nullableStr(255),
+  orderType: nullableStr(20),
+  receiptType: nullableStr(20),
+  takeLine: nullableStr(100),
+  uniqueCcpp: nullableStr(255),
+  userLegacyId: nullableStr(50),
+  fiscalZone: nullableStr(100),
+});
+
+export const ccppIdParam = z.object({ ccppId: z.coerce.number().int().positive() });

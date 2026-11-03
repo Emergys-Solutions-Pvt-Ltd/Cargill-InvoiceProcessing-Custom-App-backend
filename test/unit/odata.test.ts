@@ -7,11 +7,11 @@ import {
   incrementalLiteral,
   parseSapTimestamp,
   toSapTimestamp,
-} from '../../src/integrations/providers/sap-odata/odata-query.js';
-import { normaliseRecord, parsePage } from '../../src/integrations/providers/sap-odata/sap-odata.adapter.js';
-import { missingFields, parseMetadata } from '../../src/integrations/providers/sap-odata/odata-metadata.js';
-import { sapConnectionSchema, sapProfileSettingsSchema } from '../../src/integrations/providers/sap-odata/sap-odata.schemas.js';
-import { IntegrationError } from '../../src/integrations/core/errors.js';
+} from '../../src/modules/common/integrations/engine/providers/sap-odata/odata-query.js';
+import { normaliseRecord, parsePage } from '../../src/modules/common/integrations/engine/providers/sap-odata/sap-odata.adapter.js';
+import { missingFields, parseMetadata } from '../../src/modules/common/integrations/engine/providers/sap-odata/odata-metadata.js';
+import { sapConnectionSchema, sapProfileSettingsSchema } from '../../src/modules/common/integrations/engine/providers/sap-odata/sap-odata.schemas.js';
+import { IntegrationError } from '../../src/modules/common/integrations/engine/core/errors.js';
 
 const since = new Date('2026-07-01T10:15:30.123Z');
 

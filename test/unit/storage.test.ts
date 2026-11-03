@@ -3,11 +3,11 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { appFolder, attachmentKey, nameSuffix, sanitizeFileName, withSuffix, yearMonth } from '../../src/storage/attachment-keys.js';
-import { AttachmentStorageService, type AttachmentRegistry, type RegisteredFile } from '../../src/storage/attachment-storage.service.js';
-import { StorageError, type FileStorage } from '../../src/storage/file-storage.js';
-import { LocalFileStorage, parseRange } from '../../src/storage/local-file-storage.js';
-import { S3FileStorage, classify, isTransient, type S3StorageConfig } from '../../src/storage/s3-file-storage.js';
+import { appFolder, attachmentKey, nameSuffix, sanitizeFileName, withSuffix, yearMonth } from '../../src/modules/common/attachments/storage/attachment-keys.js';
+import { AttachmentStorageService, type AttachmentRegistry, type RegisteredFile } from '../../src/modules/common/attachments/storage/attachment-storage.service.js';
+import { StorageError, type FileStorage } from '../../src/modules/common/attachments/storage/file-storage.js';
+import { LocalFileStorage, parseRange } from '../../src/modules/common/attachments/storage/local-file-storage.js';
+import { S3FileStorage, classify, isTransient, type S3StorageConfig } from '../../src/modules/common/attachments/storage/s3-file-storage.js';
 
 const FOLDERS = { GP: 'GPP', sjo: 'SJO', rospbu: 'ROSPBU' };
 
@@ -161,7 +161,7 @@ describe('LocalFileStorage and AttachmentStorageService', () => {
   const registry = (overrides: Partial<AttachmentRegistry<{ id: number; file: RegisteredFile }>> = {}) => {
     const rows: { invoiceCode: string; file: RegisteredFile }[] = [];
     const reg: AttachmentRegistry<{ id: number; file: RegisteredFile }> = {
-      applicationCodeOf: async (code) => (code.startsWith('INV-GP') ? 'GP' : code.startsWith('INV-SJO') ? 'sjo' : null),
+      applicationCodeOf: async (_schema, code) => (code.startsWith('INV-GP') ? 'GP' : code.startsWith('INV-SJO') ? 'sjo' : null),
       register: async (input, file) => {
         rows.push({ invoiceCode: input.invoiceCode, file });
         return { id: rows.length, file };
@@ -180,8 +180,8 @@ describe('LocalFileStorage and AttachmentStorageService', () => {
   it('stores under <App>/<YYYY>/<Mon>/ and never overwrites an existing name', async () => {
     const { rows, reg } = registry();
     const svc = service(new LocalFileStorage(root), reg);
-    const first = await svc.store({ invoiceCode: 'INV-GP-1', fileName: 'Invoice-123.pdf', title: null, category: 'Uploaded Document', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-a') });
-    const second = await svc.store({ invoiceCode: 'INV-GP-2', fileName: 'Invoice-123.pdf', title: null, category: 'Uploaded Document', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-b') });
+    const first = await svc.store({ appSchema: 'gpp', invoiceCode: 'INV-GP-1', fileName: 'Invoice-123.pdf', title: null, category: 'Uploaded Document', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-a') });
+    const second = await svc.store({ appSchema: 'gpp', invoiceCode: 'INV-GP-2', fileName: 'Invoice-123.pdf', title: null, category: 'Uploaded Document', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-b') });
     assert.equal(first.file.key, 'GPP/2026/Nov/Invoice-123.pdf');
     assert.equal(second.file.key, 'GPP/2026/Nov/Invoice-123-2.pdf');
     assert.equal(await fs.readFile(path.join(root, 'GPP/2026/Nov/Invoice-123.pdf'), 'utf8'), '%PDF-a');
@@ -194,7 +194,7 @@ describe('LocalFileStorage and AttachmentStorageService', () => {
     const svc = service(new LocalFileStorage(root), reg);
     let last: RegisteredFile | null = null;
     for (let i = 0; i < 6; i += 1) {
-      last = (await svc.store({ invoiceCode: 'INV-SJO-1', fileName: 'scan.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: false, content: Buffer.from(`%PDF-${i}`) })).file;
+      last = (await svc.store({ appSchema: 'sjo', invoiceCode: 'INV-SJO-1', fileName: 'scan.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: false, content: Buffer.from(`%PDF-${i}`) })).file;
     }
     assert.equal(last!.key, 'SJO/2026/Nov/scan-r4nd0m00.pdf');
   });
@@ -202,13 +202,13 @@ describe('LocalFileStorage and AttachmentStorageService', () => {
   it('removes the uploaded file when the database registration fails', async () => {
     const { reg } = registry({ register: async () => { throw new Error('db down'); } });
     const svc = service(new LocalFileStorage(root), reg);
-    await assert.rejects(svc.store({ invoiceCode: 'INV-GP-9', fileName: 'orphan.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-o') }), /db down/);
+    await assert.rejects(svc.store({ appSchema: 'gpp', invoiceCode: 'INV-GP-9', fileName: 'orphan.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-o') }), /db down/);
     await assert.rejects(fs.access(path.join(root, 'GPP/2026/Nov/orphan.pdf')), 'no orphan file left');
   });
 
   it('rejects empty, too large files and unknown invoices', async () => {
     const svc = service(new LocalFileStorage(root), registry().reg);
-    const base = { title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true };
+    const base = { appSchema: 'gpp', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true };
     await assert.rejects(svc.store({ ...base, invoiceCode: 'INV-GP-1', fileName: 'e.pdf', content: Buffer.alloc(0) }), /empty/);
     await assert.rejects(svc.store({ ...base, invoiceCode: 'INV-GP-1', fileName: 'big.pdf', content: Buffer.alloc(2048) }), (e: unknown) => e instanceof StorageError && e.code === 'TOO_LARGE');
     await assert.rejects(svc.store({ ...base, invoiceCode: 'INV-XX-1', fileName: 'a.pdf', content: Buffer.from('x') }), (e: unknown) => e instanceof StorageError && e.code === 'NOT_FOUND');

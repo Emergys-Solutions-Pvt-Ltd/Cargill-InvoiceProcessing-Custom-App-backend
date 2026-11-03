@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { HttpClient, backoffDelay, parseRetryAfter, type FetchFn } from '../../src/integrations/core/http/http-client.js';
-import { IntegrationError } from '../../src/integrations/core/errors.js';
+import { HttpClient, backoffDelay, parseRetryAfter, type FetchFn } from '../../src/modules/common/integrations/engine/core/http/http-client.js';
+import { IntegrationError } from '../../src/modules/common/integrations/engine/core/errors.js';
 
 const respond = (status: number, body = '', headers: Record<string, string> = {}) => new Response(body, { status, headers });
 

@@ -15,7 +15,7 @@ With the server running:
 | `http://localhost:4000/api/docs/openapi.json?download=1` | Same document, downloaded as `cargill-custom-apps-openapi.json` |
 
 `npm run openapi:export` writes the document to `openapi.json` (or a path you pass after `--`).
-The spec is maintained by hand in [`src/docs/openapi.ts`](src/docs/openapi.ts); update it when a route changes.
+The spec is maintained by hand in [`src/core/docs/openapi.ts`](src/core/docs/openapi.ts); update it when a route changes.
 
 ## Setup
 
@@ -51,34 +51,55 @@ and logins are case-insensitive.
 
 ```
 src/
-  app.ts, server.ts         Express app + bootstrap
-  config/env.ts             zod-validated environment
-  db/pool.ts                pg connection pool (+ DATE / NUMERIC / BIGINT parsing)
-  db/procedures.ts          callFunction() for app.usp_* functions + the udt_invoice_input builder
-  docs/                     OpenAPI document + Swagger UI routes
-  middleware/               JWT auth, admin / app-access guards, error handler
-  modules/<feature>/        *.routes.ts (HTTP + validation) and *.repository.ts (function calls)
-  integrations/             invoice synchronization framework (SAP OData first), see below
-    core/                   provider contracts, auth strategies, HTTP client, mapping, secrets, schedules, events
-    providers/sap-odata/    SAP OData V2/V4 adapter, connection tester, GP / SJO templates
-    sync/                   orchestrator (sync workflow) + persistence ports
-    jobs/                   scheduler + worker (PostgreSQL job queue)
-    persistence/            PostgreSQL implementations of the ports
-    index.ts                composition root (providers, strategies, worker)
-  worker.ts                 dedicated sync worker process (npm run worker)
-  utils/                    pagination, formatting, signed file URLs, validation
-scripts/                    hash-password, export-openapi, mock-sap (local SAP OData mock)
+  app.ts, server.ts, worker.ts   Express app + bootstrap, dedicated sync worker (npm run worker)
+  core/                     infrastructure shared by every module
+    config/env.ts           zod-validated environment
+    db/                     pg pool (+ DATE / NUMERIC / BIGINT parsing), callFunction() for usp_* ("usp_x" = schema app, "gpp.usp_x" = module schema)
+    http/                   error handler, HttpError, request validation, pagination
+    utils/                  formatting, signed file URLs
+    docs/                   OpenAPI document + Swagger UI routes
+  modules/                  one folder per app / logical module (index.ts registers the app extensions)
+    auth/                   sign-in, JWT middleware (admin / app-access guards), users/ (User Access Management)
+    common/                 shared by all apps
+      apps/  app-config/    app tiles, assignable users, per-app settings and team members
+      invoices/             common invoice model and flow + invoice-extensions.ts (the app plug-in point)
+      attachments/          signed downloads, attachments DAL, storage/ (S3 / local, docs/STORAGE.md)
+      master-data/ lookups/ Settings > Configuration lists, dropdown sources
+      integrations/         Settings > SAP / OnBase API + engine/ (sync framework, see below)
+    gpp/                    General Payments: ccpp/ (CCPP tab), sf-fields/ (legacy SF "GP Invoice" fields)
+    sjo/                    SJO Invoice Processing: sjo-fields/ (SJO invoice fields)
+    rospbu/                 ROSPBU Invoice Processing (common model for now)
+scripts/                    hash-password, export-openapi, mock-sap / mock-onbase / mock-s3, S3 migration
 test/                       node:test suites: unit/, integration/, e2e/ (npm test)
 docs/integrations/          architecture, operations, adding a provider
-  storage/                  attachment storage service: S3 / local, layout, retries (docs/STORAGE.md)
 storage/attachments/        local attachment files (STORAGE_PROVIDER=local, and files from before S3)
 ```
 
+Every app keeps its invoices in its own tables and schema (`gpp.gpp_invoices`, `sjo.sjo_invoices`,
+`rospbu.rospbu_invoices`; `AppModule.appSchema`). Invoice codes are unique per app, so invoice routes are
+`/api/apps/:appId/invoices/:invoiceId...` and the invoice DAL calls `<appSchema>.usp_invoice_*`.
+
+Every module uses the same layers (file suffix = layer):
+
+| Layer | File | Responsibility |
+|---|---|---|
+| REST controller | `*.controller.ts` | routes, request parsing, HTTP status / response |
+| Request validation | `*.schemas.ts` | zod schemas for bodies, queries, params |
+| Business layer | `*.service.ts` | rules, access checks, orchestration; controllers and middleware call only services |
+| Data access (DAL) | `*.dal.ts` | `usp_*` calls in the module's schema (app, app_auth, gpp, sjo, rospbu) and DB result -> model conversion |
+| Models | `*.models.ts` | TypeScript types of the module |
+| DTO mapper | `*.mapper.ts` | models -> API response shape |
+
+Apps add their own invoice fields without the common module depending on them: each app registers an
+`InvoiceAppExtension` (`modules/common/invoices/invoice-extensions.ts`) with its list / detail fields,
+Create Invoice schema + columns and Invoice Details save section - see `modules/sjo/sjo.extension.ts`.
+App-only routes (GPP CCPP tab) live in the app module and are mounted in `app.ts`.
+
 ## Attachment storage (S3)
 
-Invoice files go through one service (`src/storage`): S3 bucket (`STORAGE_PROVIDER=s3`) or local
+Invoice files go through one service (`src/modules/common/attachments/storage`): S3 bucket (`STORAGE_PROVIDER=s3`) or local
 disk, laid out as `<App>/<YYYY>/<Mon>/<file name>` (e.g. `GPP/2026/Nov/Invoice-123.pdf`), never
-overwritten, registered in `app.invoice_attachments` with bucket, key and SHA-256. Connection,
+overwritten, registered in the app's `<app>.invoice_attachments` with bucket, key and SHA-256. Connection,
 credentials (IAM role or keys), timeouts, retries and error handling live in that service.
 See [docs/STORAGE.md](docs/STORAGE.md); `npm run mock:s3` for local development,
 `npm run storage:migrate-to-s3` to move existing local files.
@@ -102,7 +123,7 @@ and record-level errors, and re-runs never create duplicates.
 All data access goes through the `app.usp_*` PostgreSQL functions in
 `../database/postgres/procedures`; the only inline SQL is the `SELECT 1` health check.
 `callFunction('usp_user_list', { p_search: 'x', p_page: 1 })` runs
-`SELECT * FROM app.usp_user_list(p_search => $1, p_page => $2)` with bound parameters. Function and
+`SELECT * FROM app_auth.usp_user_list(p_search => $1, p_page => $2)` with bound parameters. Function and
 argument names are checked against a whitelist pattern.
 
 - ID and code lists are passed as PostgreSQL arrays. Bulk invoices go as a JSON array whose keys match
@@ -145,15 +166,15 @@ The full contract, with request and response schemas, is in Swagger at `/api/doc
 | GET | `/apps/:appId/invoices` | Invoices | `search`, `status` (`ALL`/Pending/…), `page`, `limit` |
 | POST | `/apps/:appId/invoices` | Create Invoice modal | Creates missing vendor (by CUIT) / station |
 | POST | `/apps/:appId/invoices/bulk` | Bulk Upload modal | `{ invoices: [...] }` (max 500, all or nothing) |
-| GET | `/invoices/:invoiceId` | Invoice Detail | Header, `attachments`, `lineItems`, `ccpps` |
-| GET | `/invoices/:invoiceId/attachments` | Invoice Detail | Attachment list |
-| GET | `/invoices/:invoiceId/pdf-attachment` | PDF preview | Primary PDF metadata |
-| PATCH | `/invoices/:invoiceId/status` | – | `{ status }` |
-| PUT | `/invoices/:invoiceId/details` | Invoice Details "Save" | `{ processId, originCityId, destinationCityId, claimNumber, additionalInfo, assignedUserId }`; null clears |
-| POST | `/invoices/:invoiceId/send-to-previous-team` | Invoice Details | Moves the invoice to the previous team (queue) by Teams sort order; 409 at the first team |
-| POST | `/invoices/:invoiceId/attachments?fileName=x.pdf` | PDF viewer upload icon | Raw PDF body (`Content-Type: application/pdf`, max 20 MB), stored in `STORAGE_DIR/uploads`; becomes the primary PDF |
+| GET | `/apps/:appId/invoices/:invoiceId` | Invoice Detail | Header, `attachments`, `lineItems` + app fields (GPP `ccpps`, `sfFields`; SJO `sjoFields`) |
+| GET | `/apps/:appId/invoices/:invoiceId/attachments` | Invoice Detail | Attachment list |
+| GET | `/apps/:appId/invoices/:invoiceId/pdf-attachment` | PDF preview | Primary PDF metadata |
+| PATCH | `/apps/:appId/invoices/:invoiceId/status` | – | `{ status }` |
+| PUT | `/apps/:appId/invoices/:invoiceId/details` | Invoice Details "Save" | `{ processId, originCityId, destinationCityId, claimNumber, additionalInfo, assignedUserId }`; null clears |
+| POST | `/apps/:appId/invoices/:invoiceId/send-to-previous-team` | Invoice Details | Moves the invoice to the previous team (queue) by Teams sort order; 409 at the first team |
+| POST | `/apps/:appId/invoices/:invoiceId/attachments?fileName=x.pdf` | PDF viewer upload icon | Raw PDF body (`Content-Type: application/pdf`, max 20 MB), stored in `STORAGE_DIR/uploads`; becomes the primary PDF |
 | GET | `/apps/:appId/users` | Invoice Details "Assigned User" | Active users granted the app, plus admins |
-| GET | `/files/attachments/:id?expires&sig` | PDF preview / download | Signed, short-lived URL (works in `<iframe>`); `&download=1` forces download |
+| GET | `/files/attachments/:app/:id?expires&sig` | PDF preview / download | Signed, short-lived URL (works in `<iframe>`); `&download=1` forces download |
 | GET | `/apps/:appId/config` | Admin Config (admin) | `team`, `search`, `page`, `limit` → settings, teams, members |
 | PUT | `/apps/:appId/config/settings` | Admin Config "Save Changes" | `{ enableNotifications, maxInvoicesLimit }` |
 | POST | `/apps/:appId/config/members` | Add Member | `{ name, email, alias?, team }` |

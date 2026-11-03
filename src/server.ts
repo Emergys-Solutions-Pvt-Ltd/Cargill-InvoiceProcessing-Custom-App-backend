@@ -1,7 +1,7 @@
-import { env } from './config/env.js';
+import { env } from './core/config/env.js';
 import { createApp } from './app.js';
-import { closePool } from './db/pool.js';
-import { startBackgroundSync, stopBackgroundSync } from './integrations/index.js';
+import { closePool } from './core/db/pool.js';
+import { startBackgroundSync, stopBackgroundSync } from './modules/common/integrations/engine/index.js';
 
 const server = createApp().listen(env.PORT, () => {
   console.log(`Cargill Custom Apps API listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);

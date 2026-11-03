@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
-import { AttachmentStorageService, type RegisteredFile } from '../../src/storage/attachment-storage.service.js';
-import { StorageError } from '../../src/storage/file-storage.js';
-import { S3FileStorage, type S3StorageConfig } from '../../src/storage/s3-file-storage.js';
+import { AttachmentStorageService, type RegisteredFile } from '../../src/modules/common/attachments/storage/attachment-storage.service.js';
+import { StorageError } from '../../src/modules/common/attachments/storage/file-storage.js';
+import { S3FileStorage, type S3StorageConfig } from '../../src/modules/common/attachments/storage/s3-file-storage.js';
 import { MockS3Server } from '../../scripts/mock-s3/mock-s3-server.js';
 
 /**
@@ -50,7 +50,7 @@ describe('S3 storage against the mock S3 service (real AWS SDK)', () => {
 
   it('uploads to <bucket>/GPP/2026/Nov/<file> with SSE, checksum and metadata, and reads it back', async () => {
     const pdf = Buffer.from(`%PDF-1.4\n${'x'.repeat(5000)}`);
-    const file = await service().store({ invoiceCode: 'INV-GP-1', fileName: 'Invoice-123.pdf', title: null, category: 'Uploaded Document', mimeType: 'application/pdf', isPrimary: true, content: pdf });
+    const file = await service().store({ appSchema: 'gpp', invoiceCode: 'INV-GP-1', fileName: 'Invoice-123.pdf', title: null, category: 'Uploaded Document', mimeType: 'application/pdf', isPrimary: true, content: pdf });
     assert.equal(file.key, 'GPP/2026/Nov/Invoice-123.pdf');
     assert.equal(file.sha256, crypto.createHash('sha256').update(pdf).digest('hex'));
     const stored = server.object(BUCKET, file.key)!;
@@ -69,8 +69,8 @@ describe('S3 storage against the mock S3 service (real AWS SDK)', () => {
 
   it('a second file with the same name in the month gets -2 (no overwrite)', async () => {
     const svc = service();
-    const a = await svc.store({ invoiceCode: 'INV-GP-2', fileName: 'Dup.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-a') });
-    const b = await svc.store({ invoiceCode: 'INV-GP-3', fileName: 'Dup.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-b') });
+    const a = await svc.store({ appSchema: 'gpp', invoiceCode: 'INV-GP-2', fileName: 'Dup.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-a') });
+    const b = await svc.store({ appSchema: 'gpp', invoiceCode: 'INV-GP-3', fileName: 'Dup.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-b') });
     assert.deepEqual([a.key, b.key], ['GPP/2026/Nov/Dup.pdf', 'GPP/2026/Nov/Dup-2.pdf']);
     assert.equal(server.object(BUCKET, a.key)!.body.toString(), '%PDF-a', 'first file untouched');
   });
@@ -100,8 +100,8 @@ describe('S3 storage against the mock S3 service (real AWS SDK)', () => {
     try {
       const s = new S3FileStorage({ ...config, endpoint: legacy.url, sendChecksum: false });
       const svc = service(s);
-      const a = await svc.store({ invoiceCode: 'INV-GP-4', fileName: 'Old.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-1') });
-      const b = await svc.store({ invoiceCode: 'INV-GP-5', fileName: 'Old.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-2') });
+      const a = await svc.store({ appSchema: 'gpp', invoiceCode: 'INV-GP-4', fileName: 'Old.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-1') });
+      const b = await svc.store({ appSchema: 'gpp', invoiceCode: 'INV-GP-5', fileName: 'Old.pdf', title: null, category: 'x', mimeType: 'application/pdf', isPrimary: true, content: Buffer.from('%PDF-2') });
       assert.deepEqual([a.key, b.key], ['GPP/2026/Nov/Old.pdf', 'GPP/2026/Nov/Old-2.pdf']);
     } finally {
       await legacy.stop();

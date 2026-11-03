@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { ExtractedPage, ExtractionRequest, IntegrationProvider, InvoiceExtractor, SourceRecord } from '../../src/integrations/core/contracts.js';
-import { IntegrationError } from '../../src/integrations/core/errors.js';
+import type { ExtractedPage, ExtractionRequest, IntegrationProvider, InvoiceExtractor, SourceRecord } from '../../src/modules/common/integrations/engine/core/contracts.js';
+import { IntegrationError } from '../../src/modules/common/integrations/engine/core/errors.js';
 
 /**
  * A second, non-SAP provider ("e-invoice feed") used to prove the framework is provider

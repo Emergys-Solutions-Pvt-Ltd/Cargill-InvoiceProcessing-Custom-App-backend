@@ -2,20 +2,25 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { env } from './config/env.js';
-import { pool } from './db/pool.js';
-import { authenticate, requireAdmin } from './middleware/auth.js';
-import { attachmentStorage } from './storage/index.js';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import authRoutes from './modules/auth/auth.routes.js';
-import appsRoutes from './modules/apps/apps.routes.js';
-import invoicesRoutes from './modules/invoices/invoices.routes.js';
-import usersRoutes from './modules/users/users.routes.js';
-import lookupsRoutes from './modules/lookups/lookups.routes.js';
-import filesRoutes from './modules/files/files.routes.js';
-import docsRoutes from './docs/docs.routes.js';
-import masterDataRoutes from './modules/master-data/master-data.routes.js';
-import integrationsRoutes from './modules/integrations/index.js';
+import { env } from './core/config/env.js';
+import { pool } from './core/db/pool.js';
+import { errorHandler, notFoundHandler } from './core/http/error-handler.js';
+import docsRoutes from './core/docs/docs.controller.js';
+import {
+  appsController,
+  attachmentStorage,
+  authController,
+  authenticate,
+  ccppController,
+  filesController,
+  integrationsController,
+  lookupsController,
+  masterDataController,
+  registerAppModules,
+  requireAdmin,
+  requireAppAccess,
+  usersController,
+} from './modules/index.js';
 
 /** Storage check (S3 HeadBucket / local write access), cached so health probes do not hammer S3. */
 const STORAGE_HEALTH_TTL_MS = 30_000;
@@ -30,6 +35,9 @@ const storageHealth = async () => {
 };
 
 export const createApp = () => {
+  // GPP / SJO / ROSPBU fields and rules on the common invoice endpoints
+  registerAppModules();
+
   const app = express();
 
   app.disable('x-powered-by');
@@ -55,17 +63,18 @@ export const createApp = () => {
 
   // Public
   app.use('/api/docs', docsRoutes);
-  app.use('/api/auth', authRoutes);
-  app.use('/api/files', filesRoutes);
+  app.use('/api/auth', authController);
+  app.use('/api/files', filesController);
 
   // Authenticated
-  app.use('/api/apps', authenticate, appsRoutes);
-  app.use('/api/invoices', authenticate, invoicesRoutes);
-  app.use('/api/users', authenticate, usersRoutes);
-  app.use('/api/lookups', authenticate, lookupsRoutes);
-  app.use('/api/master-data', authenticate, masterDataRoutes);
+  app.use('/api/apps', authenticate, appsController);
+  // GPP: /api/apps/:appId/invoices/:invoiceId/ccpp (invoice routes themselves are under appsController)
+  app.use('/api/apps/:appId/invoices', authenticate, requireAppAccess, ccppController);
+  app.use('/api/users', authenticate, usersController);
+  app.use('/api/lookups', authenticate, lookupsController);
+  app.use('/api/master-data', authenticate, masterDataController);
   // Settings > SAP Configuration: viewing and changing integrations is admin only
-  app.use('/api/integrations', authenticate, requireAdmin, integrationsRoutes);
+  app.use('/api/integrations', authenticate, requireAdmin, integrationsController);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

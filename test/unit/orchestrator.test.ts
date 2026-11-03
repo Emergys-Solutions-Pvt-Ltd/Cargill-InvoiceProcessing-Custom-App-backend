@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
-import { IntegrationError } from '../../src/integrations/core/errors.js';
-import { AesGcmSecretStore } from '../../src/integrations/core/secrets/secret-store.js';
-import { SHUTDOWN_REASON } from '../../src/integrations/sync/sync-orchestrator.js';
+import { IntegrationError } from '../../src/modules/common/integrations/engine/core/errors.js';
+import { AesGcmSecretStore } from '../../src/modules/common/integrations/engine/core/secrets/secret-store.js';
+import { SHUTDOWN_REASON } from '../../src/modules/common/integrations/engine/sync/sync-orchestrator.js';
 import { feedMapping, feedProvider, feedRecord, feedState, resetFeed } from '../support/fake-provider.js';
 import { InMemorySyncStore, TEST_KEY, control, createTestOrchestrator, integrationRecord, jobRecord, profileRecord } from '../support/fakes.js';
 
