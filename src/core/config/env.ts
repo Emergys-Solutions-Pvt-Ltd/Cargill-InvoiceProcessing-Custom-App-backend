@@ -26,6 +26,16 @@ const envSchema = z.object({
 
   STORAGE_DIR: z.string().default('storage/attachments'),
 
+  // ---- Email inbox (Microsoft Graph, app-only) ----
+  GRAPH_TENANT_ID: z.string().optional(),
+  GRAPH_CLIENT_ID: z.string().optional(),
+  GRAPH_CLIENT_SECRET: z.string().optional(),
+  /** Mailbox used by the scripts/try-* diagnostics; the poller reads the mailboxes registered in app.mailboxes. */
+  MAILBOX_ADDRESS: z.string().optional(),
+  /** Poll the registered mailboxes in this process (API with SYNC_WORKER_ENABLED, or the worker). Needs the GRAPH_* settings. */
+  MAILBOX_POLLING_ENABLED: z.stringbool().default(false),
+  MAILBOX_POLL_INTERVAL_SECONDS: z.coerce.number().int().min(30).max(3_600).default(120),
+
   // ---- Attachment storage (invoice PDFs) ----
   /** Where new attachments are written: local disk (STORAGE_DIR) or an S3 bucket. Existing files are read from where they are. */
   STORAGE_PROVIDER: z.enum(['local', 's3']).default('local'),

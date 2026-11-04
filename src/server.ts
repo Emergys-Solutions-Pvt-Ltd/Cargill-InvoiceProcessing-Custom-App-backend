@@ -2,11 +2,15 @@ import { env } from './core/config/env.js';
 import { createApp } from './app.js';
 import { closePool } from './core/db/pool.js';
 import { startBackgroundSync, stopBackgroundSync } from './modules/common/integrations/engine/index.js';
+import { startMailboxPolling, stopMailboxPolling } from './modules/common/mailbox/index.js';
 
 const server = createApp().listen(env.PORT, () => {
   console.log(`Cargill Custom Apps API listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
-  // Invoice synchronization (SAP ...) runs in this process unless a dedicated worker is deployed
-  if (env.SYNC_WORKER_ENABLED) startBackgroundSync();
+  // Invoice synchronization (SAP ...) and mailbox polling run in this process unless a dedicated worker is deployed
+  if (env.SYNC_WORKER_ENABLED) {
+    startBackgroundSync();
+    startMailboxPolling();
+  }
 });
 
 const shutdown = (signal: string) => {
@@ -14,6 +18,7 @@ const shutdown = (signal: string) => {
   server.close(async () => {
     // A running sync job is interrupted after its current request and put back in the queue
     await stopBackgroundSync().catch((err) => console.error('Error stopping background sync', err));
+    await stopMailboxPolling().catch((err) => console.error('Error stopping mailbox polling', err));
     await closePool().catch((err) => console.error('Error closing DB pool', err));
     process.exit(0);
   });
