@@ -25,7 +25,7 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
     throw HttpError.unauthorized('Invalid or expired token');
   }
 
-  const user = await findActiveAuthUser(Number(payload.sub));
+  const user = await findActiveAuthUser(payload.sub);
   if (!user) throw HttpError.unauthorized('User is no longer active');
 
   req.user = user;

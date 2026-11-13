@@ -37,7 +37,7 @@ describe('E2E regression: GP / SJO invoice processing + SAP sync', { skip: !API 
     return { status: res.status, json: text ? JSON.parse(text) : null, text };
   };
 
-  const waitForJob = async (jobId: number) => {
+  const waitForJob = async (jobId: string) => {
     for (let i = 0; i < 90; i += 1) {
       const { json } = await call('GET', `/integrations/${integrationId}/jobs/${jobId}`);
       if (!['queued', 'running'].includes(json.status)) return json;

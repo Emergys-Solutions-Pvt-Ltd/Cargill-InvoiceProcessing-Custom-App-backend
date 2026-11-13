@@ -3,7 +3,7 @@ import type { Role } from '../auth.models.js';
 export type UserStatus = 'Active' | 'Suspended';
 
 export interface UserListItem {
-  id: number;
+  id: string;
   username: string;
   name: string;
   email: string;

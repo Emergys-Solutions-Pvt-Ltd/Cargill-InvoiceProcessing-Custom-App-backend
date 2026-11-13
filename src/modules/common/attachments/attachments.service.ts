@@ -10,7 +10,7 @@ import { attachmentStorage } from './storage/index.js';
  * Checks the signed link and opens the file from wherever its row says it lives (S3 bucket or local
  * disk) through the attachment storage service, honouring an HTTP Range.
  */
-export const openSignedAttachment = async (appSchema: string, id: number, expires: number, sig: string, range?: string) => {
+export const openSignedAttachment = async (appSchema: string, id: string, expires: number, sig: string, range?: string) => {
   if (!APP_SCHEMAS.includes(appSchema as AppSchema) || !verifyAttachmentSignature(appSchema, id, expires, sig)) {
     throw HttpError.forbidden('Link is invalid or has expired');
   }

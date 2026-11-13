@@ -9,12 +9,12 @@ import { paginationQuery } from '../../../core/http/pagination.js';
 const jsonObject = z.record(z.string(), z.unknown());
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 
-export const idParam = z.object({ id: z.coerce.number().int().positive() });
-export const jobParams = idParam.extend({ jobId: z.coerce.number().int().positive() });
-export const profileParams = idParam.extend({ profileId: z.coerce.number().int().positive() });
+export const idParam = z.object({ id: z.uuid() });
+export const jobParams = idParam.extend({ jobId: z.uuid() });
+export const profileParams = idParam.extend({ profileId: z.uuid() });
 
 export const profileBody = z.object({
-  id: z.number().int().positive().nullable().optional(),
+  id: z.uuid().nullable().optional(),
   name: z.string().trim().min(1, 'Name is required').max(100),
   moduleSlug: z.string().trim().min(1, 'Target application is required').max(100),
   isActive: z.boolean().default(true),

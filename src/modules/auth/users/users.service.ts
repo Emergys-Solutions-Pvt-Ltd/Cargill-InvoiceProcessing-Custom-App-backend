@@ -7,7 +7,7 @@ import type { UpdateUserInput, UserListFilters, UserListItem, UserStatus } from 
 
 export const listUserAccounts = (filters: UserListFilters) => listUsers(filters);
 
-export const getUserAccount = async (id: number): Promise<UserListItem> => {
+export const getUserAccount = async (id: string): Promise<UserListItem> => {
   const user = await findUserById(id);
   if (!user) throw HttpError.notFound('User not found');
   return user;
@@ -34,7 +34,7 @@ export const createUserAccount = async (input: {
   });
 
 /** Admins cannot suspend or demote themselves. */
-export const updateUserAccount = async (actorId: number, id: number, input: UpdateUserInput) => {
+export const updateUserAccount = async (actorId: string, id: string, input: UpdateUserInput) => {
   if (id === actorId && (input.status === 'Suspended' || input.role === 'User')) {
     throw HttpError.badRequest('You cannot suspend or demote your own account');
   }
@@ -42,7 +42,7 @@ export const updateUserAccount = async (actorId: number, id: number, input: Upda
 };
 
 /** Active / Suspended toggle; omitting status flips it. */
-export const changeUserStatus = async (actorId: number, id: number, status?: UserStatus) => {
+export const changeUserStatus = async (actorId: string, id: string, status?: UserStatus) => {
   const existing = await getUserAccount(id);
   const nextStatus = status ?? (existing.status === 'Active' ? 'Suspended' : 'Active');
   if (id === actorId && nextStatus === 'Suspended') {
@@ -52,11 +52,11 @@ export const changeUserStatus = async (actorId: number, id: number, status?: Use
 };
 
 /** usp_user_delete keeps the user's invoice / team history. */
-export const deleteUserAccount = async (actorId: number, id: number) => {
+export const deleteUserAccount = async (actorId: string, id: string) => {
   const existing = await getUserAccount(id);
   await deleteUser(id, actorId);
   return existing;
 };
 
 /** The active user behind a token (reloaded per request, so suspensions apply immediately). */
-export const findActiveAuthUser = (id: number) => findActiveAuthUserById(id);
+export const findActiveAuthUser = (id: string) => findActiveAuthUserById(id);

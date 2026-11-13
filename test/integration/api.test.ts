@@ -16,7 +16,7 @@ import type * as Repository from '../../src/modules/common/integrations/integrat
 import type { IntegrationWrite } from '../../src/modules/common/integrations/integrations.models.js';
 import { HttpError } from '../../src/core/http/http-error.js';
 import { MockSapServer } from '../../scripts/mock-sap/mock-sap-server.js';
-import { InMemoryJobQueue, TEST_KEY, baseMapping, integrationRecord, profileRecord, testConfigDeps } from '../support/fakes.js';
+import { InMemoryJobQueue, TEST_KEY, baseMapping, integrationRecord, profileRecord, testConfigDeps, uid } from '../support/fakes.js';
 
 /**
  * /api/integrations through the real router, admin guard and error handler, with an in-memory
@@ -26,17 +26,17 @@ import { InMemoryJobQueue, TEST_KEY, baseMapping, integrationRecord, profileReco
 const PASSWORD = 'Sup3r-Secret-Pa55';
 
 class InMemoryRepo {
-  records = new Map<number, IntegrationRecord>();
-  secrets = new Map<number, string | null>();
+  records = new Map<string, IntegrationRecord>();
+  secrets = new Map<string, string | null>();
   audit: { action: string; details: Record<string, unknown> }[] = [];
   writes: IntegrationWrite[] = [];
   seq = 1;
 
   listIntegrations = async () => [...this.records.values()];
-  getIntegration = async (id: number) => this.records.get(id) ?? null;
+  getIntegration = async (id: string) => this.records.get(id) ?? null;
   saveIntegration = async (w: IntegrationWrite) => {
     this.writes.push(w);
-    const id = w.id ?? this.seq++;
+    const id = w.id ?? uid(this.seq++);
     const prev = this.records.get(id);
     if (prev && w.expectedVersion !== prev.version) throw Object.assign(new Error('changed by someone else'), { code: 'CA409' });
     if (w.clearSecret) this.secrets.set(id, null);
@@ -45,20 +45,20 @@ class InMemoryRepo {
       id,
       version: (prev?.version ?? 0) + 1,
       secretConfigured: !!this.secrets.get(id),
-      profiles: w.profiles.map((p, i) => profileRecord({ ...p, id: p.id ?? 100 + i, integrationId: id, keyFields: p.keyFields })),
+      profiles: w.profiles.map((p, i) => profileRecord({ ...p, id: p.id ?? uid(100 + i), integrationId: id, keyFields: p.keyFields })),
     });
     this.records.set(id, record);
     return record;
   };
-  setSecret = async (id: number, sealed: string | null) => {
+  setSecret = async (id: string, sealed: string | null) => {
     this.secrets.set(id, sealed);
     const r = this.records.get(id)!;
     r.secretConfigured = !!sealed;
     r.secretUpdatedAt = new Date();
   };
-  getSealedSecret = async (id: number) => this.secrets.get(id) ?? null;
-  deleteIntegration = async (id: number) => void this.records.delete(id);
-  addAudit = async (_id: number | null, _u: number | null, action: string, details: Record<string, unknown>) => void this.audit.push({ action, details });
+  getSealedSecret = async (id: string) => this.secrets.get(id) ?? null;
+  deleteIntegration = async (id: string) => void this.records.delete(id);
+  addAudit = async (_id: string | null, _u: string | null, action: string, details: Record<string, unknown>) => void this.audit.push({ action, details });
   resetCursor = async () => {};
   getSummary = async () => null;
   listJobs = async () => ({ rows: [], totalItems: 0, totalPages: 1, page: 1, limit: 10 });
@@ -120,7 +120,7 @@ describe('/api/integrations', () => {
     app.use((req, _res, next) => {
       const role = req.header('x-test-role');
       if (!role) throw HttpError.unauthorized('Missing bearer token');
-      req.user = { id: 1, email: 'admin@cargill.com', name: 'Admin', role: role as 'Admin' | 'User', assignedApps: [] };
+      req.user = { id: uid(1), email: 'admin@cargill.com', name: 'Admin', role: role as 'Admin' | 'User', assignedApps: [] };
       next();
     });
     app.use('/api/integrations', requireAdmin, (req, res, next) =>
@@ -134,7 +134,7 @@ describe('/api/integrations', () => {
           config,
           queue,
           resolveModule: async (slug) =>
-            ['GP', 'sjo'].includes(slug) ? { moduleId: slug === 'GP' ? 1 : 5, slug, name: slug, invoicePrefix: slug.toUpperCase(), applicationId: 1, applicationCode: slug, appSchema: slug === 'GP' ? 'gpp' : 'sjo' } : null,
+            ['GP', 'sjo'].includes(slug) ? { moduleId: uid(slug === 'GP' ? 1 : 5), slug, name: slug, invoicePrefix: slug.toUpperCase(), applicationId: uid(1), applicationCode: slug, appSchema: slug === 'GP' ? 'gpp' : 'sjo' } : null,
         }),
         () => ({ workerEnabled: false, workerId: null, metrics: {} }),
       )(req, res, next),

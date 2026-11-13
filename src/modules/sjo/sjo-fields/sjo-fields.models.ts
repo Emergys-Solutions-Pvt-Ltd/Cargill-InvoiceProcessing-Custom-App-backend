@@ -1,7 +1,7 @@
 // SJO Invoice Processing fields (sjo.invoice_sjo_fields)
 
 export interface LookupRef {
-  id: number;
+  id: string;
   code: string;
   name: string;
 }
@@ -20,9 +20,9 @@ export interface SjoFieldsRow {
 }
 
 export interface SjoFieldsInput {
-  countryId: number;
-  businessUnitId: number;
-  erpSystemId: number;
+  countryId: string;
+  businessUnitId: string;
+  erpSystemId: string;
   idFiscal: string;
   abNumber: string | null;
   abName: string | null;

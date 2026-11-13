@@ -7,15 +7,15 @@ import type { MasterDataEntity, MasterDataFilters, MasterDataInput } from './mas
 export const listMasterDataEntities = () => listEntities();
 
 /** Active items for dropdowns (e.g. countries, business-units, erp-systems). */
-export const listMasterDataOptions = (entity: MasterDataEntity, parentId?: number) => listOptions(entity, parentId);
+export const listMasterDataOptions = (entity: MasterDataEntity, parentId?: string) => listOptions(entity, parentId);
 
 export const listMasterDataItems = (entity: MasterDataEntity, filters: MasterDataFilters) => listItems(entity, filters);
 
 export const createMasterDataItem = (entity: MasterDataEntity, input: MasterDataInput) => saveItem(entity, input);
 
-export const updateMasterDataItem = (entity: MasterDataEntity, id: number, input: MasterDataInput) => saveItem(entity, input, id);
+export const updateMasterDataItem = (entity: MasterDataEntity, id: string, input: MasterDataInput) => saveItem(entity, input, id);
 
 /**
  * The Configuration screen's "Delete" deactivates the item (it stays referenced by invoices).
  */
-export const deactivateMasterDataItem = (entity: MasterDataEntity, id: number) => deactivateItem(entity, id);
+export const deactivateMasterDataItem = (entity: MasterDataEntity, id: string) => deactivateItem(entity, id);

@@ -13,12 +13,12 @@ import { type IntegrationWrite, type SyncErrorRow, type IntegrationSummary, type
 export const listIntegrations = async (providerType?: string): Promise<IntegrationRecord[]> =>
   (await callFunction<IntegrationRow>('usp_integration_list', { p_provider_type: providerType ?? null })).map(toIntegrationRecord);
 
-export const getIntegration = async (id: number): Promise<IntegrationRecord | null> => {
+export const getIntegration = async (id: string): Promise<IntegrationRecord | null> => {
   const [row] = await callFunction<IntegrationRow>('usp_integration_get', { p_integration_id: id });
   return row ? toIntegrationRecord(row) : null;
 };
 
-export const saveIntegration = async (w: IntegrationWrite, userId: number): Promise<IntegrationRecord> => {
+export const saveIntegration = async (w: IntegrationWrite, userId: string): Promise<IntegrationRecord> => {
   const profiles = w.profiles.map((p) => ({
     id: p.id,
     module_id: p.moduleId,
@@ -56,20 +56,20 @@ export const saveIntegration = async (w: IntegrationWrite, userId: number): Prom
   return toIntegrationRecord(row);
 };
 
-export const setSecret = async (id: number, sealed: string | null, userId: number) => {
+export const setSecret = async (id: string, sealed: string | null, userId: string) => {
   await callFunctionSingle('usp_integration_set_secret', { p_integration_id: id, p_secret_ciphertext: sealed, p_user_id: userId });
 };
 
-export const getSealedSecret = async (id: number): Promise<string | null> => {
+export const getSealedSecret = async (id: string): Promise<string | null> => {
   const [row] = await callFunction<{ secret_ciphertext: string | null }>('usp_integration_get_secret', { p_integration_id: id });
   return row?.secret_ciphertext ?? null;
 };
 
-export const deleteIntegration = async (id: number) => {
+export const deleteIntegration = async (id: string) => {
   await callFunctionSingle('usp_integration_delete', { p_integration_id: id });
 };
 
-export const addAudit = async (integrationId: number | null, userId: number | null, action: string, details: Record<string, unknown>) => {
+export const addAudit = async (integrationId: string | null, userId: string | null, action: string, details: Record<string, unknown>) => {
   await callFunctionSingle('usp_integration_audit_add', {
     p_integration_id: integrationId,
     p_actor_user_id: userId,
@@ -78,12 +78,12 @@ export const addAudit = async (integrationId: number | null, userId: number | nu
   });
 };
 
-export const resetCursor = async (integrationId: number, profileId: number) => {
+export const resetCursor = async (integrationId: string, profileId: string) => {
   await callFunctionSingle('usp_integration_profile_reset_cursor', { p_integration_id: integrationId, p_profile_id: profileId });
 };
 
 interface SummaryRow {
-  integration_id: number;
+  integration_id: string;
   last_status: string | null;
   last_attempt_at: Date | null;
   last_success_at: Date | null;
@@ -106,7 +106,7 @@ interface SummaryRow {
   invoices_imported: number;
 }
 
-export const getSummary = async (id: number, days: number): Promise<IntegrationSummary | null> => {
+export const getSummary = async (id: string, days: number): Promise<IntegrationSummary | null> => {
   const [r] = await callFunction<SummaryRow>('usp_integration_summary', { p_integration_id: id, p_days: days });
   if (!r) return null;
   return {
@@ -129,7 +129,7 @@ export const getSummary = async (id: number, days: number): Promise<IntegrationS
   };
 };
 
-export const listJobs = async (integrationId: number, f: JobListFilters) => {
+export const listJobs = async (integrationId: string, f: JobListFilters) => {
   const rows = await callFunction<{ job: JobRow } & PageColumns>('usp_sync_job_list', {
     p_integration_id: integrationId,
     p_status: f.status ?? null,
@@ -142,18 +142,18 @@ export const listJobs = async (integrationId: number, f: JobListFilters) => {
   return { rows: rows.map((r) => toJobRecord(r.job)), ...toPageMeta(rows[0], f.limit) };
 };
 
-export const getJob = async (integrationId: number, jobId: number): Promise<JobRecord | null> => {
+export const getJob = async (integrationId: string, jobId: string): Promise<JobRecord | null> => {
   const [row] = await callFunction<JobRow>('usp_sync_job_get', { p_integration_id: integrationId, p_job_id: jobId });
   return row ? toJobRecord(row) : null;
 };
 
-export const cancelJob = async (integrationId: number, jobId: number): Promise<JobRecord> =>
+export const cancelJob = async (integrationId: string, jobId: string): Promise<JobRecord> =>
   toJobRecord(await callFunctionSingle<JobRow>('usp_sync_job_cancel', { p_integration_id: integrationId, p_job_id: jobId }));
 
 interface ErrorRow extends PageColumns {
-  id: number;
-  job_id: number;
-  profile_id: number | null;
+  id: string;
+  job_id: string;
+  profile_id: string | null;
   profile_name: string | null;
   stage: string;
   external_key: string | null;
@@ -162,12 +162,12 @@ interface ErrorRow extends PageColumns {
   created_at: Date;
 }
 
-export const listJobErrors = async (jobId: number, stage: string | undefined, page: number, limit: number) => {
+export const listJobErrors = async (jobId: string, stage: string | undefined, page: number, limit: number) => {
   const rows = await callFunction<ErrorRow>('usp_sync_error_list', { p_job_id: jobId, p_stage: stage ?? null, p_page: page, p_page_size: limit });
   return {
     rows: rows.map(
       (r): SyncErrorRow => ({
-        id: Number(r.id), jobId: r.job_id, profileId: r.profile_id, profileName: r.profile_name, stage: r.stage,
+        id: r.id, jobId: r.job_id, profileId: r.profile_id, profileName: r.profile_name, stage: r.stage,
         externalKey: r.external_key, message: r.message, details: r.details, createdAt: r.created_at,
       }),
     ),

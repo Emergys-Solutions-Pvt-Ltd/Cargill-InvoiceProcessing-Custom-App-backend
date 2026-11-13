@@ -21,6 +21,7 @@ import {
   jobRecord,
   profileRecord,
   testConfigDeps,
+  uid,
 } from '../support/fakes.js';
 
 /**
@@ -89,7 +90,7 @@ describe('OnBase provider (mock Hyland IdP + API Server)', () => {
     const { orchestrator } = createTestOrchestratorWith(store, attachments, onbaseProvider);
     await orchestrator.run(jobRecord(), control());
     server.requests.length = 0;
-    const second = await orchestrator.run(jobRecord({ id: 2 }), control());
+    const second = await orchestrator.run(jobRecord({ id: uid(2) }), control());
     assert.equal(second.counters.created, 0);
     assert.ok(server.requests.every((r) => !r.url.includes('/content')), 'no document downloads');
     const query = server.requests.find((r) => r.url.endsWith('/documents/queries'));
@@ -108,7 +109,7 @@ describe('OnBase provider (mock Hyland IdP + API Server)', () => {
 
     server.failContentFor.clear();
     store.integration.profiles[0].watermark = null; // full re-read; the invoice is unchanged but still lacks its PDF
-    const retry = await orchestrator.run(jobRecord({ id: 3 }), control());
+    const retry = await orchestrator.run(jobRecord({ id: uid(3) }), control());
     assert.equal(retry.status, 'succeeded');
     assert.ok(attachments.saved.has(`INV-GP-OB-${victim.id}`));
   });

@@ -18,8 +18,8 @@ import { MASTER_DATA_ENTITIES, STATUS_COLORS } from './master-data.models.js';
 const router = Router();
 
 const entityParam = z.object({ entity: z.enum(MASTER_DATA_ENTITIES, { message: 'Unknown configuration list' }) });
-const itemParams = entityParam.extend({ id: z.coerce.number().int().positive() });
-const optionalId = z.coerce.number().int().positive().optional();
+const itemParams = entityParam.extend({ id: z.uuid() });
+const optionalId = z.uuid().optional();
 
 const listQuery = z.object({
   search: z.string().trim().default(''),
@@ -33,7 +33,7 @@ const itemBody = z.object({
   code: z.string().trim().max(30).nullable().optional(),
   name: z.string().trim().min(1).max(150),
   description: z.string().trim().max(500).nullable().optional(),
-  parentId: z.coerce.number().int().positive().nullable().optional(),
+  parentId: z.uuid().nullable().optional(),
   color: z.enum(STATUS_COLORS).nullable().optional(),
   sortOrder: z.coerce.number().int().min(0).max(100000).default(0),
   isActive: z.boolean().default(true),

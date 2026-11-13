@@ -5,11 +5,11 @@ export interface Application {
 }
 
 export interface AppModule {
-  moduleId: number;
+  moduleId: string;
   slug: string;
   name: string;
   invoicePrefix: string;
-  applicationId: number;
+  applicationId: string;
   applicationCode: string;
   /** Schema of the app's own invoice tables and functions (gpp, sjo, rospbu). */
   appSchema: AppSchema;

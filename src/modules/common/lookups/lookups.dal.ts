@@ -3,10 +3,10 @@ import { callFunctionSingle } from '../../../core/db/procedures.js';
 // app.udt_lookups_result: jsonb arrays of udt_vendor_result / udt_lookup_value_result /
 // udt_master_data_option_result (statuses)
 interface LookupsResult {
-  vendors: { id: number; legal_name: string; cuit: string }[];
+  vendors: { id: string; legal_name: string; cuit: string }[];
   stations: { name: string; sort_order: number }[];
   teams: { name: string; sort_order: number }[];
-  statuses: { id: number; code: string; name: string; color: string | null }[];
+  statuses: { id: string; code: string; name: string; color: string | null }[];
 }
 
 export const getLookups = async () => {

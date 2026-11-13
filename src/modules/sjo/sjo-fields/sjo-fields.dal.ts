@@ -6,13 +6,13 @@ import type { SjoFieldsInput, SjoFieldsRow } from './sjo-fields.models.js';
 
 // sjo.udt_invoice_sjo_fields_result (NULL for non-SJO invoices)
 export interface SjoFieldsResult {
-  country_id: number;
+  country_id: string;
   country_code: string;
   country_name: string;
-  business_unit_id: number;
+  business_unit_id: string;
   business_unit_code: string;
   business_unit_name: string;
-  erp_system_id: number;
+  erp_system_id: string;
   erp_system_code: string;
   erp_system_name: string;
   id_fiscal: string;
@@ -38,7 +38,7 @@ export const mapSjoFieldsResult = (r: SjoFieldsResult): SjoFieldsRow => ({
 });
 
 /** Invoice Details "Save" of the SJO fields (insert or update). Raises CA400 (not SJO, missing / inactive value), CA404. */
-export const saveSjoFields = async (code: string, userId: number, input: SjoFieldsInput) => {
+export const saveSjoFields = async (code: string, userId: string, input: SjoFieldsInput) => {
   await callFunctionSingle('sjo.usp_invoice_sjo_fields_save', {
     p_invoice_code: code,
     p_updated_by: userId,

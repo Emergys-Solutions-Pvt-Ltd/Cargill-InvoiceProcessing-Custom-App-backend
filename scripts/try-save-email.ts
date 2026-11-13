@@ -2,12 +2,14 @@ import { env } from '../src/core/config/env.js';
 import { closePool } from '../src/core/db/pool.js';
 import { listMessages, listAttachments } from '../src/modules/common/mailbox/graph/graph-mail.client.js';
 import { saveAttachment, skipReason } from '../src/modules/common/mailbox/mailbox-files.js';
-import { upsertEmail, addAttachment } from '../src/modules/common/mailbox/mailbox.dal.js';
-
-const MAILBOX_ID = 1; // app.mailboxes row for cargill.poc@emergys.com
+import { upsertEmail, addAttachment, getActiveMailboxes } from '../src/modules/common/mailbox/mailbox.dal.js';
 
 async function main() {
   const mailbox = env.MAILBOX_ADDRESS!;
+  // app.mailboxes row of that address (ids are uuids)
+  const row = (await getActiveMailboxes()).find((b) => b.address.toLowerCase() === mailbox.toLowerCase());
+  if (!row) throw new Error(`No active app.mailboxes row for ${mailbox}`);
+  const MAILBOX_ID = row.id;
   const { messages } = await listMessages(mailbox, 5);
 
   for (const m of messages) {

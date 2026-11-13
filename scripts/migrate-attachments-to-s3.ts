@@ -46,7 +46,7 @@ const main = async () => {
   console.log(`${dryRun ? '[dry run] ' : ''}Copying local attachments to s3://${writeStorage.bucket}`);
   // Every app keeps its attachments in its own table (<app>.invoice_attachments, ids unique per app)
   for (const appSchema of APP_SCHEMAS) {
-    let afterId = 0;
+    let afterId: string | null = null;
     for (;;) {
       const rows = await listAttachmentsByProvider(appSchema, 'local', afterId, 100);
       if (rows.length === 0 || processed >= limit) break;

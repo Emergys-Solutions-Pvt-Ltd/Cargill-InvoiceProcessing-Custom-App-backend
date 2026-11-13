@@ -54,7 +54,7 @@ const toNewInvoice = (appModule: AppModule, input: CreateInvoiceInput): NewInvoi
 });
 
 /** <app>.usp_invoice_create_batch enforces duplicate ids, existing ids, the daily limit and the app's rules atomically. */
-export const createInvoices = (appModule: AppModule, inputs: CreateInvoiceInput[], userId: number) =>
+export const createInvoices = (appModule: AppModule, inputs: CreateInvoiceInput[], userId: string) =>
   insertInvoices(appModule, inputs.map((i) => toNewInvoice(appModule, i)), userId);
 
 // ---- Invoice Details
@@ -80,7 +80,7 @@ export const invoiceDetailsSchema = () =>
  * Invoice Details "Save": an app section is only accepted on that app's invoices; app sections are
  * saved first (their validation fails before anything is written), then the common fields.
  */
-export const saveInvoiceDetails = async (appModule: AppModule, invoiceCode: string, userId: number, body: Record<string, unknown>) => {
+export const saveInvoiceDetails = async (appModule: AppModule, invoiceCode: string, userId: string, body: Record<string, unknown>) => {
   const { processId, originCityId, destinationCityId, claimNumber, additionalInfo, assignedUserId, ...sections } =
     body as z.infer<typeof invoiceDetailsBody> & Record<string, unknown>;
   for (const ext of invoiceExtensions()) {

@@ -4,7 +4,7 @@ export interface AppSettings {
 }
 
 export interface TeamMember {
-  id: number;
+  id: string;
   name: string;
   email: string;
   alias: string;

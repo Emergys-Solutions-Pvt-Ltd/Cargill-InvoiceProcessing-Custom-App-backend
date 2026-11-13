@@ -5,8 +5,8 @@ import type { CcppInput, CcppRow } from './ccpp.models.js';
 
 // gpp.udt_ccpp_result
 export interface CcppResult {
-  id: number;
-  invoice_id: number;
+  id: string;
+  invoice_id: string;
   product: string;
   legal_doc_issuer: string | null;
   status: string;
@@ -28,7 +28,7 @@ export interface CcppResult {
   withholding_code: string | null;
   withholding_concept: string | null;
   matching: string | null;
-  created_by: number | null;
+  created_by: string | null;
   created_by_name: string | null;
   account: string | null;
   cuit: string | null;
@@ -47,7 +47,7 @@ export interface CcppResult {
   pending_amount: number | null;
   order_total_amount: number | null;
   vat: string | null;
-  updated_by: number | null;
+  updated_by: string | null;
   updated_by_name: string | null;
   line: number | null;
   currency: string | null;
@@ -151,7 +151,7 @@ export const listCcpps = async (code: string): Promise<CcppRow[]> => {
  * Raises CA400 (missing product/status, unknown acting user), CA404 (invoice not found, or on
  * update, the CCPP row doesn't exist / belongs to another invoice).
  */
-export const saveCcpp = async (code: string, userId: number, input: CcppInput, ccppId: number | null = null): Promise<CcppRow> =>
+export const saveCcpp = async (code: string, userId: string, input: CcppInput, ccppId: string | null = null): Promise<CcppRow> =>
   mapCcppResult(
     await callFunctionSingle<CcppResult>('gpp.usp_ccpp_save', {
       p_invoice_code: code,

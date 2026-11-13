@@ -10,7 +10,7 @@ import { AesGcmSecretStore } from '../../src/modules/common/integrations/engine/
 import { sapODataProvider } from '../../src/modules/common/integrations/engine/providers/sap-odata/sap-odata.provider.js';
 import type { IntegrationRecord } from '../../src/modules/common/integrations/engine/sync/ports.js';
 import { MockSapServer } from '../../scripts/mock-sap/mock-sap-server.js';
-import { InMemorySyncStore, TEST_KEY, control, createTestOrchestrator, integrationRecord, jobRecord, profileRecord, testConfigDeps } from '../support/fakes.js';
+import { InMemorySyncStore, TEST_KEY, control, createTestOrchestrator, integrationRecord, jobRecord, profileRecord, testConfigDeps, uid } from '../support/fakes.js';
 
 /**
  * SAP OData provider against the mock SAP service over real HTTP: paging (server-driven and
@@ -66,7 +66,7 @@ describe('SAP OData provider (mock SAP service)', () => {
       await orchestrator.run(jobRecord(), control());
       server.update('5105600003', { InvoiceGrossAmount: '99999.00' }, new Date('2026-08-01T00:00:00Z'));
       server.requests.length = 0;
-      const second = await orchestrator.run(jobRecord({ id: 2 }), control());
+      const second = await orchestrator.run(jobRecord({ id: uid(2) }), control());
       assert.equal(second.counters.updated, 1);
       assert.equal(second.counters.created, 0);
       const filter = decodeURIComponent(server.requests.find((r) => r.url.includes('/A_SupplierInvoice'))!.url);

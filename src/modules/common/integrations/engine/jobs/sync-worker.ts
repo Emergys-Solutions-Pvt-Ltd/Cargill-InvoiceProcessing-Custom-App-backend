@@ -29,7 +29,7 @@ export interface WorkerDependencies {
   events: SyncEvents;
   logger: Logger;
   /** Retry policy of an integration (from its stored JSON); defaults when unknown. */
-  retryPolicyOf: (integrationId: number) => Promise<Record<string, unknown> | null>;
+  retryPolicyOf: (integrationId: string) => Promise<Record<string, unknown> | null>;
   now?: () => Date;
 }
 

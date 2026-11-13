@@ -19,7 +19,7 @@ import type {
 // ---- Function result shapes (app.udt_*_result) ----
 
 interface InvoiceResult {
-  id: number;
+  id: string;
   invoice_code: string;
   module_slug: string;
   invoice_prefix: string;
@@ -44,32 +44,32 @@ interface InvoiceResult {
   vendor_name: string | null;
   cuit: string | null;
   country_station: string | null;
-  pdf_attachment_id: number | null;
+  pdf_attachment_id: string | null;
   pdf_file_name: string | null;
   pdf_title: string | null;
   pdf_mime_type: string | null;
-  process_id: number | null;
+  process_id: string | null;
   process_name: string | null;
-  origin_city_id: number | null;
+  origin_city_id: string | null;
   origin_name: string | null;
-  destination_city_id: number | null;
+  destination_city_id: string | null;
   destination_name: string | null;
-  team_id: number | null;
+  team_id: string | null;
   team_name: string | null;
-  assigned_user_id: number | null;
+  assigned_user_id: string | null;
   assigned_user_name: string | null;
   claim_number: number | null;
   additional_info: string | null;
   filenet_id: string | null;
-  created_by: number | null;
+  created_by: string | null;
   created_by_name: string | null;
-  updated_by: number | null;
+  updated_by: string | null;
   updated_by_name: string | null;
   is_manual: boolean;
 }
 
 interface InvoiceEmailResult {
-  id: number;
+  id: string;
   message_id: string | null;
   from_name: string | null;
   from_address: string;
@@ -230,7 +230,7 @@ const udtInvoiceInput = (rows: NewInvoice[]) =>
  * Raises CA400 (bad input / duplicate ids in request) or CA409 (id exists, daily limit).
  * Returns the created invoice codes in request order.
  */
-export const insertInvoices = async (appModule: AppModule, invoices: NewInvoice[], userId: number): Promise<string[]> => {
+export const insertInvoices = async (appModule: AppModule, invoices: NewInvoice[], userId: string): Promise<string[]> => {
   const rows = await callFunction<{ code: string }>(`${appModule.appSchema}.usp_invoice_create_batch`, {
     p_module_id: appModule.moduleId,
     p_created_by: userId,
@@ -245,7 +245,7 @@ export const updateInvoiceStatus = async (appSchema: AppSchema, code: string, st
 };
 
 /** Invoice Details "Save". NULL clears a field. Raises CA400 (unknown / inactive reference), CA404. */
-export const updateInvoiceDetails = async (appSchema: AppSchema, code: string, userId: number, input: InvoiceDetailsInput) => {
+export const updateInvoiceDetails = async (appSchema: AppSchema, code: string, userId: string, input: InvoiceDetailsInput) => {
   await callFunctionSingle(`${appSchema}.usp_invoice_update_details`, {
     p_invoice_code: code,
     p_process_id: input.processId,
@@ -259,8 +259,8 @@ export const updateInvoiceDetails = async (appSchema: AppSchema, code: string, u
 };
 
 /** Moves the invoice to the previous team (queue). Raises CA404, CA409 (no team / already first). */
-export const sendToPreviousTeam = async (appSchema: AppSchema, code: string): Promise<{ id: number; name: string }> => {
-  const team = await callFunctionSingle<{ id: number; name: string }>(`${appSchema}.usp_invoice_send_to_previous_team`, {
+export const sendToPreviousTeam = async (appSchema: AppSchema, code: string): Promise<{ id: string; name: string }> => {
+  const team = await callFunctionSingle<{ id: string; name: string }>(`${appSchema}.usp_invoice_send_to_previous_team`, {
     p_invoice_code: code,
   });
   return { id: team.id, name: team.name };

@@ -5,7 +5,7 @@ import { silentLogger } from '../../src/modules/common/integrations/engine/core/
 import { SyncScheduler } from '../../src/modules/common/integrations/engine/jobs/sync-scheduler.js';
 import { SyncWorker } from '../../src/modules/common/integrations/engine/jobs/sync-worker.js';
 import { feedMapping, feedProvider, feedRecord, feedState, resetFeed } from '../support/fake-provider.js';
-import { InMemoryJobQueue, InMemorySyncStore, createTestOrchestrator, integrationRecord, profileRecord } from '../support/fakes.js';
+import { InMemoryJobQueue, InMemorySyncStore, createTestOrchestrator, integrationRecord, profileRecord, uid } from '../support/fakes.js';
 
 const integration = () =>
   integrationRecord({
@@ -31,7 +31,7 @@ describe('SyncWorker', () => {
 
   it('claims a queued job, runs it and records the outcome', async () => {
     const { queue, worker, store } = setup();
-    await queue.enqueue({ integrationId: 1, trigger: 'manual', requestedBy: 1 });
+    await queue.enqueue({ integrationId: uid(1), trigger: 'manual', requestedBy: uid(1) });
     const job = await worker.tick();
     assert.ok(job);
     assert.equal(queue.jobs[0].status, 'succeeded');
@@ -45,7 +45,7 @@ describe('SyncWorker', () => {
     const scheduled: number[] = [];
     events.on('job.retry_scheduled', (e) => scheduled.push(e.nextAttempt));
 
-    await queue.enqueue({ integrationId: 1, trigger: 'scheduled', requestedBy: null });
+    await queue.enqueue({ integrationId: uid(1), trigger: 'scheduled', requestedBy: null });
     await worker.tick();
     assert.equal(queue.jobs[0].status, 'failed');
     assert.equal(queue.jobs[1].status, 'queued');
@@ -66,14 +66,14 @@ describe('SyncWorker', () => {
   it('does not retry non-transient failures (auth / validation)', async () => {
     const { queue, worker } = setup();
     feedState.failOnPage = { page: 1, error: IntegrationError.auth('denied') };
-    await queue.enqueue({ integrationId: 1, trigger: 'manual', requestedBy: 1 });
+    await queue.enqueue({ integrationId: uid(1), trigger: 'manual', requestedBy: uid(1) });
     await worker.tick();
     assert.equal(queue.jobs.length, 1);
   });
 
   it('recovers stale jobs (crashed worker) and retries them', async () => {
     const { queue, worker } = setup();
-    const job = await queue.enqueue({ integrationId: 1, trigger: 'scheduled', requestedBy: null });
+    const job = await queue.enqueue({ integrationId: uid(1), trigger: 'scheduled', requestedBy: null });
     await queue.claim('dead-worker');
     queue.jobs[0].heartbeatAt = new Date(Date.now() - 3_600_000);
     await worker.tick();
@@ -83,7 +83,7 @@ describe('SyncWorker', () => {
 
   it('a lost heartbeat (job recovered elsewhere) stops the run without touching the job', async () => {
     const { queue, worker } = setup();
-    await queue.enqueue({ integrationId: 1, trigger: 'manual', requestedBy: 1 });
+    await queue.enqueue({ integrationId: uid(1), trigger: 'manual', requestedBy: uid(1) });
     const originalHeartbeat = queue.heartbeat.bind(queue);
     queue.heartbeat = async (id, w) => {
       queue.jobs[0].workerId = 'someone-else';
@@ -95,7 +95,7 @@ describe('SyncWorker', () => {
 
   it('cancel requested via heartbeat ends the job as cancelled', async () => {
     const { queue, worker, store } = setup();
-    await queue.enqueue({ integrationId: 1, trigger: 'manual', requestedBy: 1 });
+    await queue.enqueue({ integrationId: uid(1), trigger: 'manual', requestedBy: uid(1) });
     queue.jobs[0].cancelRequested = true;
     await worker.tick();
     assert.equal(queue.jobs[0].status, 'cancelled');
@@ -106,22 +106,22 @@ describe('SyncWorker', () => {
 describe('SyncScheduler', () => {
   it('queues due integrations, skips overlapping runs and plans the next run', async () => {
     const queue = new InMemoryJobQueue();
-    const due = integrationRecord({ id: 1, autoSyncEnabled: true, nextRunAt: new Date(Date.now() - 1000) });
-    const unplanned = integrationRecord({ id: 2, autoSyncEnabled: true, nextRunAt: null });
+    const due = integrationRecord({ id: uid(1), autoSyncEnabled: true, nextRunAt: new Date(Date.now() - 1000) });
+    const unplanned = integrationRecord({ id: uid(2), autoSyncEnabled: true, nextRunAt: null });
     queue.integrations = [due, unplanned];
     let woken = 0;
     const scheduler = new SyncScheduler({ queue, logger: silentLogger, onEnqueued: () => woken++ }, { intervalMs: 1000, retentionDays: 90 });
 
     assert.equal(await scheduler.tick(), 1, 'only the due one runs; the unplanned one is only scheduled');
     assert.equal(woken, 1);
-    assert.ok(queue.nextRuns.get(1)! > new Date());
-    assert.ok(queue.nextRuns.get(2)! > new Date());
+    assert.ok(queue.nextRuns.get(uid(1))! > new Date());
+    assert.ok(queue.nextRuns.get(uid(2))! > new Date());
     assert.equal(queue.purged, 1, 'retention applied');
 
     // Previous job still active -> next slot is skipped, no overlap
     due.nextRunAt = new Date(Date.now() - 1000);
     assert.equal(await scheduler.tick(), 0);
-    assert.equal(queue.jobs.filter((j) => j.integrationId === 1).length, 1);
+    assert.equal(queue.jobs.filter((j) => j.integrationId === uid(1)).length, 1);
     assert.equal(queue.purged, 1, 'purge at most once a day');
   });
 
@@ -130,6 +130,6 @@ describe('SyncScheduler', () => {
     queue.integrations = [integrationRecord({ autoSyncEnabled: true, nextRunAt: new Date(0), schedule: { mode: 'interval', intervalMinutes: 1 } })];
     const scheduler = new SyncScheduler({ queue, logger: silentLogger }, { intervalMs: 1000, retentionDays: 90 });
     assert.equal(await scheduler.tick(), 0);
-    assert.equal(queue.nextRuns.get(1), null);
+    assert.equal(queue.nextRuns.get(uid(1)), null);
   });
 });

@@ -13,9 +13,9 @@ const dateTime = { type: 'string', format: 'date-time', nullable: true };
 const anyObject = { type: 'object', additionalProperties: true };
 
 const tag = ['Integrations'];
-const id = { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 }, description: 'Integration id' };
-const jobId = { name: 'jobId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } };
-const profileId = { name: 'profileId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } };
+const id = { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'Integration id' };
+const jobId = { name: 'jobId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } };
+const profileId = { name: 'profileId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } };
 const page = { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } };
 const limit = (def: number) => ({ name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: def } });
 
@@ -150,7 +150,7 @@ export const integrationSchemas = {
   IntegrationProfileInput: {
     type: 'object', required: ['name', 'moduleSlug', 'invoiceCodeTemplate'],
     properties: {
-      id: { type: 'integer', nullable: true, description: 'Existing profile id; omit for a new profile' },
+      id: { type: 'string', format: 'uuid', nullable: true, description: 'Existing profile id; omit for a new profile' },
       name: { type: 'string', maxLength: 100, example: 'General Payments' },
       moduleSlug: { type: 'string', example: 'GP', description: 'Target application module (GP, sjo, ...)' },
       isActive: { type: 'boolean', default: true },
@@ -188,12 +188,12 @@ export const integrationSchemas = {
   },
   IntegrationStatus: {
     type: 'object',
-    properties: { lastStatus: nullableString, lastAttemptAt: dateTime, lastSuccessAt: dateTime, nextRunAt: dateTime, lastJobId: { type: 'integer', nullable: true } },
+    properties: { lastStatus: nullableString, lastAttemptAt: dateTime, lastSuccessAt: dateTime, nextRunAt: dateTime, lastJobId: { type: 'string', format: 'uuid', nullable: true } },
   },
   Integration: {
     type: 'object',
     properties: {
-      id: { type: 'integer' }, providerType: { type: 'string' }, name: { type: 'string' }, description: nullableString,
+      id: { type: 'string', format: 'uuid' }, providerType: { type: 'string' }, name: { type: 'string' }, description: nullableString,
       environment: nullableString, sourceSystem: { type: 'string' }, isActive: { type: 'boolean' },
       connection: anyObject, authType: { type: 'string' }, authSettings: anyObject,
       secret: { type: 'object', properties: { configured: { type: 'boolean' }, updatedAt: dateTime } },
@@ -206,9 +206,9 @@ export const integrationSchemas = {
   IntegrationListItem: {
     type: 'object',
     properties: {
-      id: { type: 'integer' }, providerType: { type: 'string' }, name: { type: 'string' }, environment: nullableString,
+      id: { type: 'string', format: 'uuid' }, providerType: { type: 'string' }, name: { type: 'string' }, environment: nullableString,
       sourceSystem: { type: 'string' }, isActive: { type: 'boolean' }, autoSyncEnabled: { type: 'boolean' },
-      profiles: { type: 'array', items: { type: 'object', properties: { id: { type: 'integer' }, name: { type: 'string' }, moduleSlug: { type: 'string' }, isActive: { type: 'boolean' } } } },
+      profiles: { type: 'array', items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, moduleSlug: { type: 'string' }, isActive: { type: 'boolean' } } } },
       status: ref('IntegrationStatus'), updatedAt: dateTime,
     },
   },
@@ -234,10 +234,10 @@ export const integrationSchemas = {
   SyncJob: {
     type: 'object',
     properties: {
-      id: { type: 'integer' }, integrationId: { type: 'integer' },
+      id: { type: 'string', format: 'uuid' }, integrationId: { type: 'string', format: 'uuid' },
       trigger: { type: 'string', enum: ['scheduled', 'manual', 'retry'] }, requestedBy: nullableString,
       status: { type: 'string', enum: ['queued', 'running', 'succeeded', 'partially_succeeded', 'failed', 'cancelled'] },
-      attempt: { type: 'integer' }, maxAttempts: { type: 'integer' }, retryOfJobId: { type: 'integer', nullable: true },
+      attempt: { type: 'integer' }, maxAttempts: { type: 'integer' }, retryOfJobId: { type: 'string', format: 'uuid', nullable: true },
       runAfter: dateTime, startedAt: dateTime, finishedAt: dateTime, heartbeatAt: dateTime,
       cancelRequested: { type: 'boolean' }, durationMs: { type: 'integer', nullable: true },
       records: counters, pages: { type: 'integer' }, profileStats: anyObject,
@@ -247,7 +247,7 @@ export const integrationSchemas = {
   SyncError: {
     type: 'object',
     properties: {
-      id: { type: 'integer' }, profileId: { type: 'integer', nullable: true }, profileName: nullableString,
+      id: { type: 'string', format: 'uuid' }, profileId: { type: 'string', format: 'uuid', nullable: true }, profileName: nullableString,
       stage: { type: 'string', enum: ['fetch', 'mapping', 'validation', 'persistence', 'review'] },
       externalKey: nullableString, message: { type: 'string' }, details: { ...anyObject, nullable: true }, createdAt: dateTime,
     },
@@ -255,7 +255,7 @@ export const integrationSchemas = {
   IntegrationSummary: {
     type: 'object',
     properties: {
-      integrationId: { type: 'integer' }, lastStatus: nullableString, lastAttemptAt: dateTime, lastSuccessAt: dateTime,
+      integrationId: { type: 'string', format: 'uuid' }, lastStatus: nullableString, lastAttemptAt: dateTime, lastSuccessAt: dateTime,
       nextRunAt: dateTime, autoSyncEnabled: { type: 'boolean' },
       lastJob: { ...ref('SyncJob'), nullable: true }, activeJob: { ...ref('SyncJob'), nullable: true },
       periodDays: { type: 'integer' },

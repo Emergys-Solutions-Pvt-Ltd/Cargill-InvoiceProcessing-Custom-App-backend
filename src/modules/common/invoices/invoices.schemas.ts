@@ -42,7 +42,7 @@ export const createInvoiceCommonFields = {
   receptionDate: dateString.optional(),
   emailReceptionDate: dateString.optional().nullable(),
   /** "Assign To" */
-  assignedUserId: z.preprocess(blankToNull, z.coerce.number().int().positive().nullable().optional()).transform((v) => v ?? null),
+  assignedUserId: z.preprocess(blankToNull, z.uuid().nullable().optional()).transform((v) => v ?? null),
 };
 
 /** Default Create Invoice / Bulk Upload input (GPP, ROSPBU): vendor, CUIT and amount are required. */
@@ -65,7 +65,7 @@ export interface CreateInvoiceInput {
   status: string;
   receptionDate?: Date;
   emailReceptionDate?: Date | null;
-  assignedUserId: number | null;
+  assignedUserId: string | null;
 }
 
 export const MAX_BULK_INVOICES = 500;
@@ -84,7 +84,7 @@ export const invoiceCodeParam = z.object({ invoiceId: z.string().trim().min(1).m
 
 export const invoiceStatusBody = z.object({ status: z.string().trim().min(1).max(20) });
 
-const nullableId = z.coerce.number().int().positive().nullable().optional().transform((v) => v ?? null);
+const nullableId = z.uuid().nullable().optional().transform((v) => v ?? null);
 
 /** Invoice Details "Save" (common Super User fields); app extensions add their own sections. */
 export const invoiceDetailsBody = z.object({

@@ -13,7 +13,7 @@ export type InvoiceStatus = string;
 export interface InvoiceRow {
   /** App schema the invoice lives in (gpp, sjo, rospbu); invoice codes are unique per app. */
   appSchema: AppSchema;
-  id: number;
+  id: string;
   invoiceCode: string;
   moduleSlug: string;
   invoicePrefix: string;
@@ -39,27 +39,27 @@ export interface InvoiceRow {
   vendorName: string | null;
   cuit: string | null;
   countryStation: string | null;
-  pdfAttachmentId: number | null;
+  pdfAttachmentId: string | null;
   pdfFileName: string | null;
   pdfTitle: string | null;
   pdfMimeType: string | null;
   // Workflow / Super User fields (Invoice Details page)
-  processId: number | null;
+  processId: string | null;
   processName: string | null;
-  originCityId: number | null;
+  originCityId: string | null;
   originName: string | null;
-  destinationCityId: number | null;
+  destinationCityId: string | null;
   destinationName: string | null;
-  teamId: number | null;
+  teamId: string | null;
   teamName: string | null;
-  assignedUserId: number | null;
+  assignedUserId: string | null;
   assignedUserName: string | null;
   claimNumber: number;
   additionalInfo: string | null;
   filenetId: string | null;
-  createdBy: number | null;
+  createdBy: string | null;
   createdByName: string | null;
-  updatedBy: number | null;
+  updatedBy: string | null;
   updatedByName: string | null;
   isManual: boolean;
   /**
@@ -84,7 +84,7 @@ export interface LineItemRow {
 
 /** The email the invoice PDF was received through (app.invoice_source_emails). */
 export interface SourceEmailRow {
-  id: number;
+  id: string;
   messageId: string | null;
   fromName: string | null;
   fromAddress: string;
@@ -111,12 +111,12 @@ export interface InvoiceListFilters {
 }
 
 export interface InvoiceDetailsInput {
-  processId: number | null;
-  originCityId: number | null;
-  destinationCityId: number | null;
+  processId: string | null;
+  originCityId: string | null;
+  destinationCityId: string | null;
   claimNumber: number;
   additionalInfo: string | null;
-  assignedUserId: number | null;
+  assignedUserId: string | null;
 }
 
 /**
@@ -135,6 +135,6 @@ export interface NewInvoice {
   status: InvoiceStatus;
   receptionDate: Date;
   emailReceptionDate: Date | null;
-  assignedUserId: number | null;
+  assignedUserId: string | null;
   extraColumns: Record<string, unknown>;
 }

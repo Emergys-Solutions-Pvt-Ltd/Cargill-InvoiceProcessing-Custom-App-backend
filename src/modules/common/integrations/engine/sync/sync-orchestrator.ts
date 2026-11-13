@@ -162,7 +162,7 @@ export class SyncOrchestrator {
     }
   }
 
-  private async loadConfig(integrationId: number): Promise<IntegrationConfig> {
+  private async loadConfig(integrationId: string): Promise<IntegrationConfig> {
     const record = await this.deps.store.loadIntegration(integrationId);
     if (!record) throw IntegrationError.config('The integration no longer exists');
     if (!record.isActive) throw IntegrationError.config('The integration is inactive');
@@ -177,7 +177,7 @@ export class SyncOrchestrator {
     extractor: InvoiceExtractor,
     control: RunControl,
     counters: PageCounters,
-    ref: { jobId: number; integrationId: number },
+    ref: { jobId: string; integrationId: string },
     documents: DocumentFetcher | null = null,
     docCounters = { attached: 0, failed: 0 },
   ) {

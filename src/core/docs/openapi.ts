@@ -23,7 +23,7 @@ const entity = {
   name: 'entity', in: 'path', required: true,
   schema: { type: 'string', enum: ['countries', 'states', 'cities', 'business-units', 'teams', 'statuses', 'processes', 'erp-systems'] },
 };
-const itemId = { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } };
+const itemId = { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } };
 
 export const openApiDocument = {
   openapi: '3.0.3',
@@ -211,7 +211,7 @@ export const openApiDocument = {
       parameters: [
         { $ref: '#/components/parameters/AppId' },
         { $ref: '#/components/parameters/InvoiceId' },
-        { name: 'ccppId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        { name: 'ccppId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
       ],
       get: {
         tags: ['Invoices'], summary: 'GPP Invoice Detail "CCPP" tab - row-expand detail (all fields)',
@@ -231,7 +231,7 @@ export const openApiDocument = {
       get: {
         tags: ['Apps'], summary: 'Users an invoice of this app can be assigned to (granted users + admins)',
         responses: {
-          200: json({ type: 'array', items: { type: 'object', properties: { id: { type: 'integer' }, name: { type: 'string' }, email: { type: 'string' } } } }),
+          200: json({ type: 'array', items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, email: { type: 'string' } } } }),
           ...errors(401, 403, 404),
         },
       },
@@ -242,7 +242,7 @@ export const openApiDocument = {
         description: 'Use the `url` values returned by the invoice endpoints; links expire (FILE_URL_TTL_SECONDS). Attachment ids are unique per app.',
         parameters: [
           { name: 'app', in: 'path', required: true, schema: { type: 'string', enum: ['gpp', 'sjo', 'rospbu'] } },
-          { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'expires', in: 'query', required: true, schema: { type: 'integer' }, description: 'Unix time (seconds)' },
           { name: 'sig', in: 'query', required: true, schema: { type: 'string' } },
           { name: 'download', in: 'query', schema: { type: 'string' }, description: 'Any value forces a download' },
@@ -327,7 +327,7 @@ export const openApiDocument = {
         tags: ['Users'], summary: 'Delete a user',
         description: 'Invoices they created and their team memberships are kept (unlinked). You cannot delete yourself.',
         responses: {
-          200: json({ type: 'object', properties: { message: { type: 'string' }, data: { type: 'object', properties: { id: { type: 'integer' } } } } }),
+          200: json({ type: 'object', properties: { message: { type: 'string' }, data: { type: 'object', properties: { id: { type: 'string', format: 'uuid' } } } } }),
           ...errors(400, 401, 403, 404),
         },
       },
@@ -405,7 +405,7 @@ export const openApiDocument = {
         schema: { type: 'string', example: 'GP', enum: ['GP', 'gpp', 'gp-tool', 'freight-processing', 'sjo', 'sjo-invoice-processing', 'sjo-index-processing', 'rospbu', 'rospbu-invoice-report'] },
       },
       InvoiceId: { name: 'invoiceId', in: 'path', required: true, schema: { type: 'string', example: 'INV-GP-1015' } },
-      UserId: { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+      UserId: { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
       Search: { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Case-insensitive "contains" match' },
       Page: { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 }, description: 'Clamped to the last page' },
       Limit: { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 5 } },
@@ -451,7 +451,7 @@ export const openApiDocument = {
       CurrentUser: {
         type: 'object',
         properties: {
-          id: { type: 'integer' }, username: { type: 'string' }, name: { type: 'string' }, email: { type: 'string' },
+          id: { type: 'string', format: 'uuid' }, username: { type: 'string' }, name: { type: 'string' }, email: { type: 'string' },
           role: { type: 'string', enum: ['admin', 'user'] },
           assignedApps: { type: 'array', items: { type: 'string' }, example: ['GP', 'sjo'] },
         },
@@ -484,7 +484,7 @@ export const openApiDocument = {
       },
       LookupRef: {
         type: 'object',
-        properties: { id: { type: 'integer' }, code: { type: 'string', example: 'NIC' }, name: { type: 'string', example: 'Nicaragua' } },
+        properties: { id: { type: 'string', format: 'uuid' }, code: { type: 'string', example: 'NIC' }, name: { type: 'string', example: 'Nicaragua' } },
       },
       SjoFields: {
         type: 'object', nullable: true, description: 'SJO Invoice Processing fields; null for GP / ROSPBU invoices',
@@ -500,7 +500,7 @@ export const openApiDocument = {
       Attachment: {
         type: 'object',
         properties: {
-          id: { type: 'integer' }, fileName: { type: 'string' }, url: { type: 'string', description: 'Signed, short-lived URL' },
+          id: { type: 'string', format: 'uuid' }, fileName: { type: 'string' }, url: { type: 'string', description: 'Signed, short-lived URL' },
           title: nullableString, type: { type: 'string', example: 'application/pdf' }, size: { ...nullableString, example: '245 KB' },
           category: { type: 'string', example: 'Invoice Document' }, isPrimary: { type: 'boolean' }, uploadedAt: nullableString,
         },
@@ -515,7 +515,7 @@ export const openApiDocument = {
       Ccpp: {
         type: 'object',
         properties: {
-          id: { type: 'integer' }, producto: { type: 'string' }, emitDocLegal: nullableString, status: { type: 'string' },
+          id: { type: 'string', format: 'uuid' }, producto: { type: 'string' }, emitDocLegal: nullableString, status: { type: 'string' },
           valor: nullableString, km: nullableString, toneladas: nullableString, tarifaUnitaria: nullableString,
           kmFc: nullableString, toneladasFc: nullableString,
         },
@@ -524,7 +524,7 @@ export const openApiDocument = {
         type: 'object',
         description: 'Condensed columns the CCPP tab list table renders. GET /apps/{appId}/invoices/{invoiceId}/ccpp (GPP).',
         properties: {
-          id: { type: 'integer' }, name: { ...nullableString, description: 'SF "GP CCPP Name" auto-number' },
+          id: { type: 'string', format: 'uuid' }, name: { ...nullableString, description: 'SF "GP CCPP Name" auto-number' },
           cuit: nullableString, currency: nullableString, orderTotalAmount: { type: 'number', nullable: true },
           pendingAmount: { type: 'number', nullable: true }, orderNumber: nullableString, status1: nullableString,
         },
@@ -536,7 +536,7 @@ export const openApiDocument = {
           'GET /apps/{appId}/invoices/{invoiceId}/ccpp/{ccppId} and the POST/PUT response. Link Invoice / Link Invoice CUIT / ' +
           'Linked Invoice Name are not included - the row is already scoped to its one invoice via the URL.',
         properties: {
-          id: { type: 'integer' }, invoiceId: { type: 'integer' },
+          id: { type: 'string', format: 'uuid' }, invoiceId: { type: 'string', format: 'uuid' },
           product: { type: 'string' }, legalDocIssuer: nullableString, status: { type: 'string' },
           value: { type: 'number', nullable: true }, km: { type: 'number', nullable: true }, tons: { type: 'number', nullable: true },
           unitRate: { type: 'number', nullable: true }, kmFc: { type: 'number', nullable: true }, tonsFc: { type: 'number', nullable: true },
@@ -595,7 +595,7 @@ export const openApiDocument = {
       SourceEmail: {
         type: 'object', description: 'Email the invoice PDF was received through',
         properties: {
-          id: { type: 'integer' }, messageId: nullableString, fromName: nullableString,
+          id: { type: 'string', format: 'uuid' }, messageId: nullableString, fromName: nullableString,
           fromAddress: { type: 'string', example: 'facturacion@molinosagro.example' },
           to: { type: 'array', items: { type: 'string' } }, cc: { type: 'array', items: { type: 'string' } },
           subject: { type: 'string' }, body: { type: 'string', description: 'Plain text' },
@@ -692,7 +692,7 @@ export const openApiDocument = {
           status: { ...status, default: 'Pending', description: 'Case-insensitive' },
           receptionDate: { type: 'string', example: '2026-10-21', description: 'YYYY-MM-DD; defaults to today' },
           emailReceptionDate: { ...nullableString, example: '2026-10-21 10:00 AM' },
-          assignedUserId: { type: 'integer', nullable: true, description: 'Assign To: active user with access to the app' },
+          assignedUserId: { type: 'string', format: 'uuid', nullable: true, description: 'Assign To: active user with access to the app' },
           country: { type: 'string', description: 'SJO: code or name (Configuration > Countries)', example: 'NIC' },
           businessUnit: { type: 'string', description: 'SJO: code or name (Configuration > Business Units)', example: 'CFN' },
           erp: { type: 'string', description: 'SJO: code or name (Configuration > ERP Systems)', example: 'JDE' },
@@ -730,7 +730,7 @@ export const openApiDocument = {
       TeamMember: {
         type: 'object',
         properties: {
-          id: { type: 'integer' }, name: { type: 'string' }, email: { type: 'string' }, alias: { type: 'string' },
+          id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, email: { type: 'string' }, alias: { type: 'string' },
           team: { type: 'string', example: 'Reception Team' },
         },
       },
@@ -757,12 +757,12 @@ export const openApiDocument = {
       },
       RemoveMembersRequest: {
         type: 'object', required: ['ids'],
-        properties: { ids: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'integer' } } },
+        properties: { ids: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string', format: 'uuid' } } },
       },
       User: {
         type: 'object',
         properties: {
-          id: { type: 'integer' }, username: { type: 'string' }, name: { type: 'string' }, email: { type: 'string' },
+          id: { type: 'string', format: 'uuid' }, username: { type: 'string' }, name: { type: 'string' }, email: { type: 'string' },
           role: { type: 'string', enum: ['Admin', 'User'] }, status: { type: 'string', enum: ['Active', 'Suspended'] },
           authProvider: { type: 'string', enum: ['LOCAL', 'AD'] },
           assignedApps: { type: 'array', items: { type: 'string' }, example: ['GP', 'sjo'] },
@@ -801,21 +801,21 @@ export const openApiDocument = {
           teams: { type: 'array', items: { type: 'string' } },
         },
       },
-      NamedRef: { type: 'object', nullable: true, properties: { id: { type: 'integer' }, name: { type: 'string' } } },
+      NamedRef: { type: 'object', nullable: true, properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' } } },
       InvoiceDetailsInput: {
         type: 'object',
         properties: {
-          processId: { type: 'integer', nullable: true, description: 'Active process (Configuration > Processes)' },
-          originCityId: { type: 'integer', nullable: true },
-          destinationCityId: { type: 'integer', nullable: true },
+          processId: { type: 'string', format: 'uuid', nullable: true, description: 'Active process (Configuration > Processes)' },
+          originCityId: { type: 'string', format: 'uuid', nullable: true },
+          destinationCityId: { type: 'string', format: 'uuid', nullable: true },
           claimNumber: { type: 'number', minimum: 0, default: 0 },
           additionalInfo: { ...nullableString, maxLength: 1000 },
-          assignedUserId: { type: 'integer', nullable: true },
+          assignedUserId: { type: 'string', format: 'uuid', nullable: true },
           sjoFields: {
             type: 'object', description: 'SJO invoices only; omit to leave the SJO fields unchanged',
             required: ['countryId', 'businessUnitId', 'erpSystemId', 'idFiscal'],
             properties: {
-              countryId: { type: 'integer' }, businessUnitId: { type: 'integer' }, erpSystemId: { type: 'integer' },
+              countryId: { type: 'string', format: 'uuid' }, businessUnitId: { type: 'string', format: 'uuid' }, erpSystemId: { type: 'string', format: 'uuid' },
               idFiscal: { type: 'string', maxLength: 30 }, abNumber: { ...nullableString, maxLength: 30 },
               abName: { ...nullableString, maxLength: 255 },
               flowTurnDown: { type: 'boolean' }, criticalVendor: { type: 'boolean' }, urgentInvoice: { type: 'boolean' },
@@ -835,8 +835,8 @@ export const openApiDocument = {
       MasterDataItem: {
         type: 'object',
         properties: {
-          id: { type: 'integer' }, code: nullableString, name: { type: 'string' }, description: nullableString,
-          parentId: { type: 'integer', nullable: true }, parentName: nullableString,
+          id: { type: 'string', format: 'uuid' }, code: nullableString, name: { type: 'string' }, description: nullableString,
+          parentId: { type: 'string', format: 'uuid', nullable: true }, parentName: nullableString,
           color: { ...nullableString, description: 'Statuses only: warning | info | success | danger | neutral' },
           sortOrder: { type: 'integer' }, isActive: { type: 'boolean' },
           updatedAt: { type: 'string', format: 'date-time', nullable: true },
@@ -845,8 +845,8 @@ export const openApiDocument = {
       MasterDataOption: {
         type: 'object',
         properties: {
-          id: { type: 'integer' }, code: nullableString, name: { type: 'string' },
-          parentId: { type: 'integer', nullable: true }, color: nullableString,
+          id: { type: 'string', format: 'uuid' }, code: nullableString, name: { type: 'string' },
+          parentId: { type: 'string', format: 'uuid', nullable: true }, color: nullableString,
         },
       },
       MasterDataInput: {
@@ -855,7 +855,7 @@ export const openApiDocument = {
           code: { ...nullableString, maxLength: 30, description: 'Required for countries, business units, statuses and processes' },
           name: { type: 'string', maxLength: 150 },
           description: { ...nullableString, maxLength: 500 },
-          parentId: { type: 'integer', nullable: true, description: 'Required for states (country) and cities (state)' },
+          parentId: { type: 'string', format: 'uuid', nullable: true, description: 'Required for states (country) and cities (state)' },
           color: { ...nullableString, description: 'Statuses only: warning | info | success | danger | neutral' },
           sortOrder: { type: 'integer', minimum: 0, default: 0 },
           isActive: { type: 'boolean', default: true },

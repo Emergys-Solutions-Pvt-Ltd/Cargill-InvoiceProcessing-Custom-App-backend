@@ -3,7 +3,7 @@ import { type AppSettings, type TeamMember, type MemberFilters } from './app-con
 
 // app.udt_app_settings_result / app.udt_team_member_result / app.udt_lookup_value_result
 interface AppSettingsResult {
-  module_id: number;
+  module_id: string;
   enable_notifications: boolean;
   max_invoices_limit: number;
 }
@@ -15,11 +15,11 @@ const toSettings = (r: AppSettingsResult): AppSettings => ({
 
 const toMember = ({ id, name, email, alias, team }: TeamMember): TeamMember => ({ id, name, email, alias, team });
 
-export const getSettings = async (moduleId: number): Promise<AppSettings> =>
+export const getSettings = async (moduleId: string): Promise<AppSettings> =>
   toSettings(await callFunctionSingle<AppSettingsResult>('usp_app_settings_get', { p_module_id: moduleId }));
 
 /** Fields left undefined keep their current value. */
-export const upsertSettings = async (moduleId: number, settings: Partial<AppSettings>, userId: number) =>
+export const upsertSettings = async (moduleId: string, settings: Partial<AppSettings>, userId: string) =>
   toSettings(
     await callFunctionSingle<AppSettingsResult>('usp_app_settings_save', {
       p_module_id: moduleId,
@@ -32,7 +32,7 @@ export const upsertSettings = async (moduleId: number, settings: Partial<AppSett
 export const listTeams = async (): Promise<string[]> =>
   (await callFunction<{ name: string }>('usp_team_list')).map((t) => t.name);
 
-export const listMembers = async (moduleId: number, f: MemberFilters) => {
+export const listMembers = async (moduleId: string, f: MemberFilters) => {
   const rows = await callFunction<TeamMember & PageColumns>('usp_team_member_list', {
     p_module_id: moduleId,
     p_team: f.team,
@@ -45,7 +45,7 @@ export const listMembers = async (moduleId: number, f: MemberFilters) => {
 
 /** Raises CA400 (unknown team) / CA409 (email already a member of this module). */
 export const addMember = async (
-  moduleId: number,
+  moduleId: string,
   member: { name: string; email: string; alias?: string; team: string },
 ): Promise<TeamMember> =>
   toMember(
@@ -59,7 +59,7 @@ export const addMember = async (
   );
 
 /** Ids belonging to another module are ignored; returns the number removed. */
-export const removeMembers = async (moduleId: number, ids: number[]): Promise<number> =>
+export const removeMembers = async (moduleId: string, ids: string[]): Promise<number> =>
   (
     await callFunctionSingle<{ rows_affected: number }>('usp_team_member_remove', {
       p_module_id: moduleId,

@@ -9,10 +9,10 @@ import {
   renderInvoiceCode,
   type FieldMapping,
 } from '../../src/modules/common/integrations/engine/core/mapping/field-mapper.js';
-import { baseMapping } from '../support/fakes.js';
+import { baseMapping, uid } from '../support/fakes.js';
 
 const profile = (overrides: Partial<ProfileConfig> = {}): ProfileConfig => ({
-  id: 1, name: 'GP', isActive: true, moduleId: 1, moduleSlug: 'GP', invoicePrefix: 'GP', settings: {},
+  id: uid(1), name: 'GP', isActive: true, moduleId: uid(1), moduleSlug: 'GP', invoicePrefix: 'GP', settings: {},
   keyFields: ['CompanyCode', 'FiscalYear', 'SupplierInvoice'],
   invoiceCodeTemplate: 'INV-{prefix}-SAP-{SupplierInvoice}-{FiscalYear}',
   fieldMapping: baseMapping as FieldMapping,

@@ -9,11 +9,11 @@ interface ApplicationResult {
 }
 
 interface AppModuleResult {
-  module_id: number;
+  module_id: string;
   slug: string;
   name: string;
   invoice_prefix: string;
-  application_id: number;
+  application_id: string;
   application_code: string;
   db_schema: AppSchema;
 }

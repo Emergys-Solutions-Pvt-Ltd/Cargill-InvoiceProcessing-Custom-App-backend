@@ -4,7 +4,7 @@ import { IntegrationError } from '../../src/modules/common/integrations/engine/c
 import { AesGcmSecretStore } from '../../src/modules/common/integrations/engine/core/secrets/secret-store.js';
 import { SHUTDOWN_REASON } from '../../src/modules/common/integrations/engine/sync/sync-orchestrator.js';
 import { feedMapping, feedProvider, feedRecord, feedState, resetFeed } from '../support/fake-provider.js';
-import { InMemorySyncStore, TEST_KEY, control, createTestOrchestrator, integrationRecord, jobRecord, profileRecord } from '../support/fakes.js';
+import { InMemorySyncStore, TEST_KEY, control, createTestOrchestrator, integrationRecord, jobRecord, profileRecord, uid } from '../support/fakes.js';
 
 const feedIntegration = (overrides = {}) =>
   integrationRecord({
@@ -38,7 +38,7 @@ describe('SyncOrchestrator', () => {
   it('is idempotent: a second run creates nothing and reads from the cursor', async () => {
     const { orchestrator } = createTestOrchestrator(store, feedProvider);
     await orchestrator.run(jobRecord(), control());
-    const second = await orchestrator.run(jobRecord({ id: 101 }), control());
+    const second = await orchestrator.run(jobRecord({ id: uid(101) }), control());
     assert.equal(second.status, 'succeeded');
     assert.equal(second.counters.created, 0);
     assert.equal(store.invoices.size, 5, 'no duplicates');
@@ -50,7 +50,7 @@ describe('SyncOrchestrator', () => {
     await orchestrator.run(jobRecord(), control());
     feedState.records.push(feedRecord(5, { total: 9999, changedAt: '2026-07-02T00:00:00.000Z' }));
     feedState.records.push(feedRecord(4, { voided: true, changedAt: '2026-07-02T00:01:00.000Z' }));
-    const outcome = await orchestrator.run(jobRecord({ id: 102 }), control());
+    const outcome = await orchestrator.run(jobRecord({ id: uid(102) }), control());
     assert.equal(outcome.counters.updated, 2);
     assert.equal(outcome.counters.unchanged, 1, 'record 5 (old version, re-read at the cursor) unchanged');
     assert.equal(store.invoices.get('D-5')?.amount, 9999);
@@ -77,7 +77,7 @@ describe('SyncOrchestrator', () => {
     assert.equal(store.integration.profiles[0].watermark, null, 'page 1 had the failure, so nothing advanced');
     // Next run re-reads everything; the failed record is now saved, others are unchanged
     store.failKeys.clear();
-    const retry = await orchestrator.run(jobRecord({ id: 103 }), control());
+    const retry = await orchestrator.run(jobRecord({ id: uid(103) }), control());
     assert.equal(retry.counters.created, 1);
     assert.equal(retry.counters.unchanged, 4);
   });
@@ -89,7 +89,7 @@ describe('SyncOrchestrator', () => {
     assert.equal(outcome.status, 'failed');
     assert.equal(outcome.retryable, true);
     assert.equal(store.invoices.size, 2, 'first page persisted');
-    assert.ok(store.errors.some((e) => e.stage === 'fetch' && e.profileId === 11));
+    assert.ok(store.errors.some((e) => e.stage === 'fetch' && e.profileId === uid(11)));
   });
 
   it('auth failure stops the run and is not retried', async () => {
@@ -134,7 +134,7 @@ describe('SyncOrchestrator', () => {
 
     const controller = new AbortController();
     controller.abort(SHUTDOWN_REASON);
-    const interrupted = await orchestrator.run(jobRecord({ id: 104 }), control({ signal: controller.signal }));
+    const interrupted = await orchestrator.run(jobRecord({ id: uid(104) }), control({ signal: controller.signal }));
     assert.equal(interrupted.status, 'interrupted');
   });
 
@@ -144,7 +144,7 @@ describe('SyncOrchestrator', () => {
     const crashed = await orchestrator.run(jobRecord(), control());
     assert.equal(crashed.status, 'failed');
     store.crashOnPage = null;
-    const recovered = await orchestrator.run(jobRecord({ id: 105 }), control());
+    const recovered = await orchestrator.run(jobRecord({ id: uid(105) }), control());
     assert.equal(recovered.status, 'succeeded');
     assert.equal(store.invoices.size, 5);
   });

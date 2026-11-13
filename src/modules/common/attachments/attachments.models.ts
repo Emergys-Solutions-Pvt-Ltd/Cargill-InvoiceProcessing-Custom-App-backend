@@ -3,7 +3,7 @@ import type { AppSchema } from '../apps/apps.models.js';
 // Invoice attachments (<app>.invoice_attachments, one table per app) - files stored by the attachment storage service
 
 export interface AttachmentRow {
-  id: number;
+  id: string;
   fileName: string;
   title: string | null;
   category: string;
@@ -12,7 +12,7 @@ export interface AttachmentRow {
   storagePath: string;
   isPrimary: boolean;
   uploadedAt: Date;
-  invoiceId: number;
+  invoiceId: string;
   applicationCode: string;
   /** App schema of the attachment (ids are unique per app). */
   appSchema: AppSchema;

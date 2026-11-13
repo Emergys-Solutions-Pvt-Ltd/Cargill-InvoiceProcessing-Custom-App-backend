@@ -21,5 +21,5 @@ export const sjoCreateColumns = (input: SjoCreateInvoiceInput): Record<string, u
 });
 
 /** Invoice Details "Save" of the SJO fields; the function rejects non-SJO invoices and inactive values (CA400). */
-export const saveInvoiceSjoFields = (invoiceCode: string, userId: number, input: SjoFieldsInput) =>
+export const saveInvoiceSjoFields = (invoiceCode: string, userId: string, input: SjoFieldsInput) =>
   saveSjoFields(invoiceCode, userId, input);

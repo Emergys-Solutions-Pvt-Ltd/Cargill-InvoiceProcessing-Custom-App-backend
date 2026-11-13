@@ -69,4 +69,4 @@ export const ccppBody = z.object({
   fiscalZone: nullableStr(100),
 });
 
-export const ccppIdParam = z.object({ ccppId: z.coerce.number().int().positive() });
+export const ccppIdParam = z.object({ ccppId: z.uuid() });

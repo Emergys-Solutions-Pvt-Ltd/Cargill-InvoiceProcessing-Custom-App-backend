@@ -22,6 +22,10 @@ import type { IntegrationWrite, JobListFilters, ProfileWrite } from './integrati
 import { toErrorDto, toIntegrationDto, toIntegrationListItem, toJobDto, toSummaryDto } from './integrations.mapper.js';
 import type { integrationBody, updateBody } from './integrations.schemas.js';
 
+/** Placeholder ids for a connection test of settings that are not saved yet (never stored). */
+const UNSAVED_ID = '00000000-0000-0000-0000-000000000000';
+const unsavedProfileId = (index: number) => `00000000-0000-0000-0000-${String(index + 1).padStart(12, '0')}`;
+
 /**
  * Integration Configuration Service + sync control for Settings > SAP Configuration.
  * Validation, credential handling (seal / write-only), connection tests, manual runs, retries,
@@ -89,11 +93,11 @@ export class IntegrationService {
     return (await this.deps.repo.listIntegrations(providerType)).map(toIntegrationListItem);
   }
 
-  async get(id: number) {
+  async get(id: string) {
     return toIntegrationDto(await this.require(id));
   }
 
-  async summary(id: number, days: number) {
+  async summary(id: string, days: number) {
     const summary = await this.deps.repo.getSummary(id, days);
     if (!summary) throw HttpError.notFound('Integration not found');
     return toSummaryDto(summary);
@@ -101,7 +105,7 @@ export class IntegrationService {
 
   // ---------------------------------------------------------------- write
 
-  async create(input: IntegrationInput, userId: number) {
+  async create(input: IntegrationInput, userId: string) {
     const write = await this.build(input, null);
     let sealed: string | null = null;
     if (input.secret) sealed = this.sealSecret(write.authType, input.secret);
@@ -112,7 +116,7 @@ export class IntegrationService {
     return toIntegrationDto(sealed ? (await this.deps.repo.getIntegration(saved.id))! : saved);
   }
 
-  async update(id: number, input: IntegrationUpdate, userId: number) {
+  async update(id: string, input: IntegrationUpdate, userId: string) {
     const existing = await this.require(id);
     const write = await this.build(input, existing);
     write.expectedVersion = input.version;
@@ -124,7 +128,7 @@ export class IntegrationService {
     return toIntegrationDto(saved);
   }
 
-  async setCredentials(id: number, secret: Record<string, unknown>, userId: number) {
+  async setCredentials(id: string, secret: Record<string, unknown>, userId: string) {
     const existing = await this.require(id);
     const sealed = this.sealSecret(existing.authType, secret);
     await this.deps.repo.setSecret(id, sealed, userId);
@@ -132,13 +136,13 @@ export class IntegrationService {
     return toIntegrationDto(await this.require(id));
   }
 
-  async remove(id: number, userId: number) {
+  async remove(id: string, userId: string) {
     const existing = await this.require(id);
     await this.deps.repo.deleteIntegration(id);
     await this.deps.repo.addAudit(null, userId, 'deleted', { integrationId: id, name: existing.name });
   }
 
-  async resetCursor(id: number, profileId: number, userId: number) {
+  async resetCursor(id: string, profileId: string, userId: string) {
     const existing = await this.require(id);
     const profile = existing.profiles.find((p) => p.id === profileId);
     if (!profile) throw HttpError.notFound('Profile not found');
@@ -149,7 +153,7 @@ export class IntegrationService {
   // ---------------------------------------------------------------- connection test
 
   /** Tests the stored integration, optionally overridden by unsaved form values. */
-  async testConnection(id: number, draft: Partial<IntegrationInput> | undefined, userId: number) {
+  async testConnection(id: string, draft: Partial<IntegrationInput> | undefined, userId: string) {
     const existing = await this.require(id);
     const merged: IntegrationInput = {
       ...this.toInput(existing),
@@ -166,19 +170,19 @@ export class IntegrationService {
   /** Tests a new, unsaved integration (credentials from the form only). */
   async testDraft(input: IntegrationInput) {
     const write = await this.build(input, null, { allowEmptyProfiles: true });
-    return this.runTest(0, null, write, null, input.secret);
+    return this.runTest(UNSAVED_ID, null, write, null, input.secret);
   }
 
   // ---------------------------------------------------------------- sync control
 
-  async syncNow(id: number, userId: number) {
+  async syncNow(id: string, userId: string) {
     await this.require(id);
     const job = await this.enqueue({ integrationId: id, trigger: 'manual', requestedBy: userId });
     await this.deps.repo.addAudit(id, userId, 'sync_requested', { jobId: job.id });
     return job;
   }
 
-  async retryJob(id: number, jobId: number, userId: number) {
+  async retryJob(id: string, jobId: string, userId: string) {
     const job = await this.deps.repo.getJob(id, jobId);
     if (!job) throw HttpError.notFound('Job not found');
     if (!RETRYABLE_STATUSES.has(job.status)) {
@@ -189,25 +193,25 @@ export class IntegrationService {
     return retry;
   }
 
-  async cancelJob(id: number, jobId: number, userId: number) {
+  async cancelJob(id: string, jobId: string, userId: string) {
     const job = await this.deps.repo.cancelJob(id, jobId);
     await this.deps.repo.addAudit(id, userId, 'job_cancelled', { jobId, status: job.status });
     return toJobDto(job);
   }
 
-  async listJobs(id: number, filters: JobListFilters) {
+  async listJobs(id: string, filters: JobListFilters) {
     await this.require(id);
     const { rows, ...page } = await this.deps.repo.listJobs(id, filters);
     return { data: rows.map(toJobDto), ...page };
   }
 
-  async getJob(id: number, jobId: number) {
+  async getJob(id: string, jobId: string) {
     const job = await this.deps.repo.getJob(id, jobId);
     if (!job) throw HttpError.notFound('Job not found');
     return toJobDto(job);
   }
 
-  async listJobErrors(id: number, jobId: number, stage: string | undefined, page: number, limit: number) {
+  async listJobErrors(id: string, jobId: string, stage: string | undefined, page: number, limit: number) {
     await this.getJob(id, jobId);
     const { rows, ...meta } = await this.deps.repo.listJobErrors(jobId, stage, page, limit);
     return { data: rows.map(toErrorDto), ...meta };
@@ -215,7 +219,7 @@ export class IntegrationService {
 
   // ---------------------------------------------------------------- internals
 
-  private async require(id: number): Promise<IntegrationRecord> {
+  private async require(id: string): Promise<IntegrationRecord> {
     const record = await this.deps.repo.getIntegration(id);
     if (!record) throw HttpError.notFound('Integration not found');
     return record;
@@ -322,7 +326,7 @@ export class IntegrationService {
   }
 
   private async runTest(
-    id: number,
+    id: string,
     existing: IntegrationRecord | null,
     write: IntegrationWrite,
     sealed: string | null,
@@ -342,7 +346,7 @@ export class IntegrationService {
   }
 
   /** Validated write model -> record shape used by resolveIntegrationConfig (for tests of unsaved values). */
-  private toRecord(id: number, existing: IntegrationRecord | null, w: IntegrationWrite): IntegrationRecord {
+  private toRecord(id: string, existing: IntegrationRecord | null, w: IntegrationWrite): IntegrationRecord {
     return {
       id,
       providerType: w.providerType,
@@ -368,7 +372,7 @@ export class IntegrationService {
       profiles: w.profiles.map((p, i) => {
         const stored = existing?.profiles.find((s) => s.id === p.id);
         return {
-          id: p.id ?? -(i + 1),
+          id: p.id ?? unsavedProfileId(i),
           integrationId: id,
           moduleId: p.moduleId,
           moduleSlug: p.module.slug,

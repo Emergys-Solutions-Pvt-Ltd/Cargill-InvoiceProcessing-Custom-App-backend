@@ -23,11 +23,11 @@ export interface MasterDataEntityDef {
 }
 
 export interface MasterDataItem {
-  id: number;
+  id: string;
   code: string | null;
   name: string;
   description: string | null;
-  parentId: number | null;
+  parentId: string | null;
   parentName: string | null;
   color: string | null;
   sortOrder: number;
@@ -36,16 +36,16 @@ export interface MasterDataItem {
 }
 
 export interface MasterDataOption {
-  id: number;
+  id: string;
   code: string | null;
   name: string;
-  parentId: number | null;
+  parentId: string | null;
   color: string | null;
 }
 
 export interface MasterDataFilters {
   search: string;
-  parentId?: number;
+  parentId?: string;
   includeInactive: boolean;
   page: number;
   limit: number;
@@ -55,7 +55,7 @@ export interface MasterDataInput {
   code?: string | null;
   name: string;
   description?: string | null;
-  parentId?: number | null;
+  parentId?: string | null;
   color?: string | null;
   sortOrder?: number;
   isActive?: boolean;

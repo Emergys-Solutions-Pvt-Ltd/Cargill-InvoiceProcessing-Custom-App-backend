@@ -13,11 +13,11 @@ interface EntityResult {
 }
 
 interface ItemResult {
-  id: number;
+  id: string;
   code: string | null;
   name: string;
   description: string | null;
-  parent_id: number | null;
+  parent_id: string | null;
   parent_name: string | null;
   color: string | null;
   sort_order: number;
@@ -59,16 +59,16 @@ export const listItems = async (entity: MasterDataEntity, f: MasterDataFilters):
   return { data: rows.map(toItem), ...toPageMeta(rows[0], f.limit) };
 };
 
-export const listOptions = async (entity: MasterDataEntity, parentId?: number): Promise<MasterDataOption[]> =>
+export const listOptions = async (entity: MasterDataEntity, parentId?: string): Promise<MasterDataOption[]> =>
   (
-    await callFunction<{ id: number; code: string | null; name: string; parent_id: number | null; color: string | null }>(
+    await callFunction<{ id: string; code: string | null; name: string; parent_id: string | null; color: string | null }>(
       'usp_master_data_options',
       { p_entity: entity, p_parent_id: parentId ?? null },
     )
   ).map((o) => ({ id: o.id, code: o.code, name: o.name, parentId: o.parent_id, color: o.color }));
 
 /** Create when id is undefined. Raises CA400 (missing / invalid field), CA404, CA409 (duplicate). */
-export const saveItem = async (entity: MasterDataEntity, input: MasterDataInput, id?: number): Promise<MasterDataItem> =>
+export const saveItem = async (entity: MasterDataEntity, input: MasterDataInput, id?: string): Promise<MasterDataItem> =>
   toItem(
     await callFunctionSingle<ItemResult>('usp_master_data_save', {
       p_entity: entity,
@@ -88,7 +88,7 @@ export const saveItem = async (entity: MasterDataEntity, input: MasterDataInput,
  * original masters module work) - fetch the current row and resend it with isActive: false,
  * rather than a bare partial patch that would null out name/code/etc.
  */
-const findItemById = async (entity: MasterDataEntity, id: number): Promise<MasterDataItem | null> => {
+const findItemById = async (entity: MasterDataEntity, id: string): Promise<MasterDataItem | null> => {
   const MAX_PAGE_SIZE = 100;
   for (let page = 1; page <= 50; page++) {
     const { data, totalPages } = await listItems(entity, { search: '', includeInactive: true, page, limit: MAX_PAGE_SIZE });
@@ -100,7 +100,7 @@ const findItemById = async (entity: MasterDataEntity, id: number): Promise<Maste
 };
 
 /** Configuration screen's "Delete" (confirm -> flip active flag to NO). Raises CA404 if the item doesn't exist. */
-export const deactivateItem = async (entity: MasterDataEntity, id: number): Promise<MasterDataItem> => {
+export const deactivateItem = async (entity: MasterDataEntity, id: string): Promise<MasterDataItem> => {
   const current = await findItemById(entity, id);
   if (!current) throw new HttpError(404, `Record ${id} not found in '${entity}'`);
   return saveItem(

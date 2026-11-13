@@ -25,7 +25,7 @@ export interface InvoiceAppExtension {
   detailsSection?: {
     key: string;
     schema: z.ZodType;
-    save: (invoiceCode: string, userId: number, value: never) => Promise<void>;
+    save: (invoiceCode: string, userId: string, value: never) => Promise<void>;
   };
 }
 

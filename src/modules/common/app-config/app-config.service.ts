@@ -14,11 +14,11 @@ export const getAppConfiguration = async (appModule: AppModule, filters: MemberF
   return { appId: appModule.slug, settings, teams, ...members };
 };
 
-export const saveAppSettings = (appModule: AppModule, settings: Partial<AppSettings>, userId: number) =>
+export const saveAppSettings = (appModule: AppModule, settings: Partial<AppSettings>, userId: string) =>
   upsertSettings(appModule.moduleId, settings, userId);
 
 /** usp_team_member_add defaults the alias and rejects unknown teams / duplicate emails. */
 export const addTeamMember = (appModule: AppModule, member: { name: string; email: string; alias?: string; team: string }) =>
   addMember(appModule.moduleId, member);
 
-export const removeTeamMembers = (appModule: AppModule, ids: number[]) => removeMembers(appModule.moduleId, ids);
+export const removeTeamMembers = (appModule: AppModule, ids: string[]) => removeMembers(appModule.moduleId, ids);

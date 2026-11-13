@@ -158,13 +158,13 @@ describe('LocalFileStorage and AttachmentStorageService', () => {
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  const registry = (overrides: Partial<AttachmentRegistry<{ id: number; file: RegisteredFile }>> = {}) => {
+  const registry = (overrides: Partial<AttachmentRegistry<{ id: string; file: RegisteredFile }>> = {}) => {
     const rows: { invoiceCode: string; file: RegisteredFile }[] = [];
-    const reg: AttachmentRegistry<{ id: number; file: RegisteredFile }> = {
+    const reg: AttachmentRegistry<{ id: string; file: RegisteredFile }> = {
       applicationCodeOf: async (_schema, code) => (code.startsWith('INV-GP') ? 'GP' : code.startsWith('INV-SJO') ? 'sjo' : null),
       register: async (input, file) => {
         rows.push({ invoiceCode: input.invoiceCode, file });
-        return { id: rows.length, file };
+        return { id: String(rows.length), file };
       },
       ...overrides,
     };

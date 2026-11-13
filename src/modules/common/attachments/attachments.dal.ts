@@ -5,8 +5,8 @@ import type { AttachmentRow, NewAttachment } from './attachments.models.js';
 // ---- Data access: <app>.usp_attachment_* of each app schema (result type app.udt_attachment_result) ----
 
 export interface AttachmentResult {
-  id: number;
-  invoice_id: number;
+  id: string;
+  invoice_id: string;
   file_name: string;
   title: string | null;
   category: string;
@@ -39,7 +39,7 @@ export const mapAttachmentResult = (appSchema: AppSchema, r: AttachmentResult): 
   contentSha256: r.content_sha256 ? r.content_sha256.trim() : null,
 });
 
-export const findAttachmentById = async (appSchema: AppSchema, id: number): Promise<AttachmentRow | null> => {
+export const findAttachmentById = async (appSchema: AppSchema, id: string): Promise<AttachmentRow | null> => {
   const [row] = await callFunction<AttachmentResult>(`${appSchema}.usp_attachment_get_by_id`, { p_attachment_id: id });
   return row ? mapAttachmentResult(appSchema, row) : null;
 };
@@ -74,7 +74,7 @@ export const findInvoiceApplicationCode = async (appSchema: AppSchema, code: str
 export const listAttachmentsByProvider = async (
   appSchema: AppSchema,
   provider: 'local' | 's3',
-  afterId: number,
+  afterId: string | null,
   limit: number,
 ): Promise<AttachmentRow[]> =>
   (await callFunction<AttachmentResult>(`${appSchema}.usp_attachment_list_by_provider`, { p_storage_provider: provider, p_after_id: afterId, p_limit: limit }))
@@ -83,7 +83,7 @@ export const listAttachmentsByProvider = async (
 /** Repoints an attachment at its new location; false when it had already moved. */
 export const moveAttachmentStorage = async (
   appSchema: AppSchema,
-  id: number,
+  id: string,
   expectedProvider: 'local' | 's3',
   target: { provider: 'local' | 's3'; bucket: string | null; path: string; sha256: string | null; etag: string | null },
 ): Promise<boolean> => {

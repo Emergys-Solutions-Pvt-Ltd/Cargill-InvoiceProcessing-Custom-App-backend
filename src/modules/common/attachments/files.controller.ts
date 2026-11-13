@@ -14,7 +14,7 @@ const router = Router();
  * (PDF viewers fetch large documents in parts).
  */
 router.get('/attachments/:app/:id', async (req, res) => {
-  const { app, id } = parse(z.object({ app: z.string().max(20), id: z.coerce.number().int().positive() }), req.params);
+  const { app, id } = parse(z.object({ app: z.string().max(20), id: z.uuid() }), req.params);
   const { expires, sig, download } = parse(
     z.object({ expires: z.coerce.number().int(), sig: z.string().min(1), download: z.string().optional() }),
     req.query,

@@ -29,7 +29,7 @@ const listQuery = z.object({
   ...paginationQuery,
 });
 
-const idParam = z.object({ id: z.coerce.number().int().positive() });
+const idParam = z.object({ id: z.uuid() });
 
 const createSchema = z
   .object({

@@ -7,8 +7,8 @@
  * standalone /invoices/:invoiceId/ccpp CRUD routes.
  */
 export interface CcppRow {
-  id: number;
-  invoiceId: number;
+  id: string;
+  invoiceId: string;
   product: string;
   legalDocIssuer: string | null;
   status: string;
@@ -30,7 +30,7 @@ export interface CcppRow {
   withholdingCode: string | null;
   withholdingConcept: string | null;
   matching: string | null;
-  createdBy: number | null;
+  createdBy: string | null;
   createdByName: string | null;
   account: string | null;
   cuit: string | null;
@@ -49,7 +49,7 @@ export interface CcppRow {
   pendingAmount: number | null;
   orderTotalAmount: number | null;
   vat: string | null;
-  updatedBy: number | null;
+  updatedBy: string | null;
   updatedByName: string | null;
   line: number | null;
   currency: string | null;

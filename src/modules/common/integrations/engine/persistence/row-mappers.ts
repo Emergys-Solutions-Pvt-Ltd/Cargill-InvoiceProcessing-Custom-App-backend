@@ -9,7 +9,7 @@ type DbDate = Date | string | null;
 export const toDate = (value: DbDate): Date | null => (value === null ? null : value instanceof Date ? value : new Date(value));
 
 export interface IntegrationRow {
-  id: number;
+  id: string;
   provider_type: string;
   name: string;
   description: string | null;
@@ -28,7 +28,7 @@ export interface IntegrationRow {
   last_attempt_at: DbDate;
   last_success_at: DbDate;
   last_status: string | null;
-  last_job_id: number | null;
+  last_job_id: string | null;
   version: number;
   profiles: ProfileRow[] | null;
   created_at: DbDate;
@@ -37,9 +37,9 @@ export interface IntegrationRow {
 }
 
 export interface ProfileRow {
-  id: number;
-  integration_id: number;
-  module_id: number;
+  id: string;
+  integration_id: string;
+  module_id: string;
   module_slug: string;
   module_name: string;
   application_code: string;
@@ -109,16 +109,16 @@ export const toIntegrationRecord = (r: IntegrationRow): IntegrationRecord => ({
 });
 
 export interface JobRow {
-  id: number;
-  integration_id: number;
+  id: string;
+  integration_id: string;
   integration_name: string;
   trigger_type: JobRecord['triggerType'];
-  requested_by: number | null;
+  requested_by: string | null;
   requested_by_name: string | null;
   status: JobRecord['status'];
   attempt: number;
   max_attempts: number;
-  retry_of_job_id: number | null;
+  retry_of_job_id: string | null;
   run_after: DbDate;
   started_at: DbDate;
   finished_at: DbDate;

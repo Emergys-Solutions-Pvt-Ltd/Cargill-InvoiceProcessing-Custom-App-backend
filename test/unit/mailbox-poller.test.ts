@@ -12,6 +12,7 @@ import { createMailboxPoller } from '../../src/modules/common/mailbox/mailbox-po
 import { MailboxScheduler } from '../../src/modules/common/mailbox/mailbox-scheduler.js';
 import type { Mailbox, MailboxAttachment, MailboxEmail, StoredFile } from '../../src/modules/common/mailbox/mailbox.models.js';
 import { silentLogger, type Logger } from '../../src/modules/common/integrations/engine/core/logger.js';
+import { uid } from '../support/fakes.js';
 
 /**
  * Mailbox poller without Graph, database or disk: an in-memory world whose fake database behaves like
@@ -39,10 +40,10 @@ const message = (id: string, hasAttachments = true): GraphMessage => ({
 });
 
 const mailboxRow = (overrides: Partial<Mailbox> = {}): Mailbox => ({
-  id: 1,
+  id: uid(1),
   address: 'invoices@example.com',
   folder: 'inbox',
-  moduleId: 1,
+  moduleId: uid(1),
   deltaLink: null,
   lastPolledAt: null,
   lastError: null,
@@ -50,7 +51,7 @@ const mailboxRow = (overrides: Partial<Mailbox> = {}): Mailbox => ({
 });
 
 interface EmailRecord {
-  id: number;
+  id: string;
   graphMessageId: string;
   hasAttachments: boolean;
   status: MailboxEmail['status'];
@@ -61,7 +62,7 @@ interface EmailRecord {
 const createWorld = () => {
   const emails = new Map<string, EmailRecord>();
   const attachments = new Map<string, MailboxAttachment>(); // key: emailId|graphAttachmentId
-  const cursors: { mailboxId: number; deltaLink: string | null; error: string | null; reset: boolean }[] = [];
+  const cursors: { mailboxId: string; deltaLink: string | null; error: string | null; reset: boolean }[] = [];
   const disk = new Set<string>();
   const removed: string[] = [];
   const pages: DeltaPage[] = [];
@@ -90,7 +91,7 @@ const createWorld = () => {
         let row = emails.get(m.id);
         const isNew = !row;
         if (!row) {
-          row = { id: emails.size + 1, graphMessageId: m.id, hasAttachments: m.hasAttachments, status: 'New', statusNote: null, attachmentsSavedAt: null };
+          row = { id: uid(emails.size + 1), graphMessageId: m.id, hasAttachments: m.hasAttachments, status: 'New', statusNote: null, attachmentsSavedAt: null };
           emails.set(m.id, row);
         }
         return {
@@ -112,7 +113,7 @@ const createWorld = () => {
         const key = `${mailboxEmailId}|${graphAttachmentId}`;
         const existing = attachments.get(key);
         if (existing) return existing;
-        const row: MailboxAttachment = { id: attachments.size + 1, mailboxEmailId, ...file, createdAt: new Date() };
+        const row: MailboxAttachment = { id: uid(attachments.size + 1), mailboxEmailId, ...file, createdAt: new Date() };
         attachments.set(key, row);
         return row;
       },
@@ -174,7 +175,7 @@ describe('Mailbox poller', () => {
     const email = w.emails.get('m1')!;
     assert.equal(email.status, 'New');
     assert.ok(email.attachmentsSavedAt, 'attachments marked as finished');
-    assert.deepEqual(w.cursors, [{ mailboxId: 1, deltaLink: 'https://graph.microsoft.com/v1.0/delta?token=next', error: null, reset: false }]);
+    assert.deepEqual(w.cursors, [{ mailboxId: uid(1), deltaLink: 'https://graph.microsoft.com/v1.0/delta?token=next', error: null, reset: false }]);
   });
 
   it('skips inline images and non-PDF files without marking the email Failed', async () => {
@@ -270,7 +271,7 @@ describe('Mailbox poller', () => {
 
     await assert.rejects(w.poller.pollMailbox(mailboxRow({ deltaLink: 'https://graph.microsoft.com/v1.0/delta?token=old' })));
 
-    assert.deepEqual(w.cursors, [{ mailboxId: 1, deltaLink: null, error: 'Delta link expired; full sync on the next poll', reset: true }]);
+    assert.deepEqual(w.cursors, [{ mailboxId: uid(1), deltaLink: null, error: 'Delta link expired; full sync on the next poll', reset: true }]);
   });
 
   it('keeps the delta link and stores the error on other Graph failures', async () => {
@@ -302,7 +303,7 @@ describe('Mailbox poller', () => {
         listAttachments: async () => [],
       },
       dal: {
-        getActiveMailboxes: async () => [mailboxRow({ id: 1, address: 'broken@example.com' }), mailboxRow({ id: 2, address: 'ok@example.com' })],
+        getActiveMailboxes: async () => [mailboxRow({ id: uid(1), address: 'broken@example.com' }), mailboxRow({ id: uid(2), address: 'ok@example.com' })],
         upsertEmail: async () => assert.fail('no messages expected'),
         addAttachment: async () => assert.fail('no attachments expected'),
         markAttachmentsDone: async () => {},
@@ -315,7 +316,7 @@ describe('Mailbox poller', () => {
     await poller.pollAllMailboxes();
 
     assert.deepEqual(polled, ['broken@example.com', 'ok@example.com']);
-    assert.deepEqual(logged.map((l) => [l.level, l.ctx?.mailboxId]), [['error', 1], ['info', 2]]);
+    assert.deepEqual(logged.map((l) => [l.level, l.ctx?.mailboxId]), [['error', uid(1)], ['info', uid(2)]]);
   });
 });
 

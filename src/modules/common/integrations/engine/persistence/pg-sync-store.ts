@@ -27,12 +27,12 @@ const errorsJson = (errors: SyncErrorInput[]) =>
   JSON.stringify(errors.map((e) => ({ external_key: e.externalKey, stage: e.stage, message: e.message, details: e.details ?? null })));
 
 export class PgSyncStore implements SyncStore {
-  async loadIntegration(integrationId: number): Promise<IntegrationRecord | null> {
+  async loadIntegration(integrationId: string): Promise<IntegrationRecord | null> {
     const [row] = await callFunction<IntegrationRow>('usp_integration_get', { p_integration_id: integrationId });
     return row ? toIntegrationRecord(row) : null;
   }
 
-  async loadSecret(integrationId: number): Promise<string | null> {
+  async loadSecret(integrationId: string): Promise<string | null> {
     const [row] = await callFunction<{ secret_ciphertext: string | null }>('usp_integration_get_secret', { p_integration_id: integrationId });
     return row?.secret_ciphertext ?? null;
   }
@@ -75,7 +75,7 @@ export class PgSyncStore implements SyncStore {
     return result.map((r) => ({ rowNo: r.row_no, externalKey: r.external_key, outcome: r.outcome, invoiceCode: r.invoice_code, message: r.message }));
   }
 
-  async addErrors(jobId: number, profileId: number | null, errors: SyncErrorInput[]) {
+  async addErrors(jobId: string, profileId: string | null, errors: SyncErrorInput[]) {
     if (errors.length === 0) return;
     await callFunction('usp_sync_error_add', { p_job_id: jobId, p_profile_id: profileId, p_errors: errorsJson(errors) });
   }
@@ -99,11 +99,11 @@ export class PgJobQueue implements JobQueue {
     return row ? toJobRecord(row) : null;
   }
 
-  async heartbeat(jobId: number, workerId: string): Promise<JobRecord> {
+  async heartbeat(jobId: string, workerId: string): Promise<JobRecord> {
     return toJobRecord(await callFunctionSingle<JobRow>('usp_sync_job_heartbeat', { p_job_id: jobId, p_worker_id: workerId }).catch(asConflict));
   }
 
-  async finish(jobId: number, workerId: string, status: JobStatus, summary: string | null): Promise<JobRecord> {
+  async finish(jobId: string, workerId: string, status: JobStatus, summary: string | null): Promise<JobRecord> {
     return toJobRecord(
       await callFunctionSingle<JobRow>('usp_sync_job_finish', {
         p_job_id: jobId, p_worker_id: workerId, p_status: status, p_error_summary: summary,
@@ -111,7 +111,7 @@ export class PgJobQueue implements JobQueue {
     );
   }
 
-  async release(jobId: number, workerId: string): Promise<boolean> {
+  async release(jobId: string, workerId: string): Promise<boolean> {
     const row = await callFunctionSingle<{ rows_affected: number }>('usp_sync_job_release', { p_job_id: jobId, p_worker_id: workerId });
     return row.rows_affected > 0;
   }
@@ -124,7 +124,7 @@ export class PgJobQueue implements JobQueue {
     return (await callFunction<IntegrationRow>('usp_integration_due_list', { p_limit: limit })).map(toIntegrationRecord);
   }
 
-  async setNextRun(integrationId: number, nextRunAt: Date | null) {
+  async setNextRun(integrationId: string, nextRunAt: Date | null) {
     await callFunction('usp_integration_set_next_run', { p_integration_id: integrationId, p_next_run_at: nextRunAt });
   }
 

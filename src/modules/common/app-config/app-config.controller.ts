@@ -55,7 +55,7 @@ router.post('/members', async (req, res) => {
 /** DELETE /api/apps/:appId/config/members  { ids: [..] } - "Remove Selected" */
 router.delete('/members', async (req, res) => {
   const appModule = res.locals.appModule as AppModule;
-  const { ids } = parse(z.object({ ids: z.array(z.coerce.number().int().positive()).min(1).max(500) }), req.body);
+  const { ids } = parse(z.object({ ids: z.array(z.uuid()).min(1).max(500) }), req.body);
   const removed = await removeTeamMembers(appModule, ids);
   res.json({ message: `${removed} member(s) removed`, count: removed });
 });

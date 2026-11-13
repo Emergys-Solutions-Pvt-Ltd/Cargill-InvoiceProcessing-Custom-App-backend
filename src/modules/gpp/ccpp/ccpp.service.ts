@@ -7,13 +7,13 @@ import type { CcppInput, CcppRow } from './ccpp.models.js';
 export const listInvoiceCcpps = (invoiceCode: string): Promise<CcppRow[]> => listCcpps(invoiceCode);
 
 /** One CCPP row of the invoice; 404 when it belongs to another invoice or does not exist. */
-export const getInvoiceCcpp = async (invoiceCode: string, ccppId: number): Promise<CcppRow> => {
+export const getInvoiceCcpp = async (invoiceCode: string, ccppId: string): Promise<CcppRow> => {
   const ccpp = (await listCcpps(invoiceCode)).find((c) => c.id === ccppId);
   if (!ccpp) throw HttpError.notFound(`CCPP row '${ccppId}' not found on this invoice`);
   return ccpp;
 };
 
-export const addInvoiceCcpp = (invoiceCode: string, userId: number, input: CcppInput) => saveCcpp(invoiceCode, userId, input);
+export const addInvoiceCcpp = (invoiceCode: string, userId: string, input: CcppInput) => saveCcpp(invoiceCode, userId, input);
 
-export const updateInvoiceCcpp = (invoiceCode: string, userId: number, ccppId: number, input: CcppInput) =>
+export const updateInvoiceCcpp = (invoiceCode: string, userId: string, ccppId: string, input: CcppInput) =>
   saveCcpp(invoiceCode, userId, input, ccppId);

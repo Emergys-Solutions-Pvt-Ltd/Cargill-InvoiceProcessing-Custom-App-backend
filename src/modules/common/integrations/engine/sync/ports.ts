@@ -9,7 +9,7 @@ import type { CanonicalInvoice } from '../core/mapping/field-mapper.js';
 
 /** An integration as stored (JSON settings not yet validated). */
 export interface IntegrationRecord {
-  id: number;
+  id: string;
   providerType: string;
   name: string;
   description: string | null;
@@ -28,7 +28,7 @@ export interface IntegrationRecord {
   lastAttemptAt: Date | null;
   lastSuccessAt: Date | null;
   lastStatus: string | null;
-  lastJobId: number | null;
+  lastJobId: string | null;
   version: number;
   profiles: ProfileRecord[];
   createdAt: Date;
@@ -37,9 +37,9 @@ export interface IntegrationRecord {
 }
 
 export interface ProfileRecord {
-  id: number;
-  integrationId: number;
-  moduleId: number;
+  id: string;
+  integrationId: string;
+  moduleId: string;
   moduleSlug: string;
   moduleName: string;
   applicationCode: string;
@@ -62,16 +62,16 @@ export type JobStatus = 'queued' | 'running' | 'succeeded' | 'partially_succeede
 export type JobTrigger = 'scheduled' | 'manual' | 'retry';
 
 export interface JobRecord {
-  id: number;
-  integrationId: number;
+  id: string;
+  integrationId: string;
   integrationName: string;
   triggerType: JobTrigger;
-  requestedBy: number | null;
+  requestedBy: string | null;
   requestedByName: string | null;
   status: JobStatus;
   attempt: number;
   maxAttempts: number;
-  retryOfJobId: number | null;
+  retryOfJobId: string | null;
   runAfter: Date;
   startedAt: Date | null;
   finishedAt: Date | null;
@@ -106,9 +106,9 @@ export interface PageRow {
 }
 
 export interface PageApplyInput {
-  jobId: number;
+  jobId: string;
   workerId: string;
-  profileId: number;
+  profileId: string;
   fetched: number;
   rows: PageRow[];
   rejects: SyncErrorInput[];
@@ -127,18 +127,18 @@ export interface RowOutcome {
 
 /** What the orchestrator needs to run a job. */
 export interface SyncStore {
-  loadIntegration(integrationId: number): Promise<IntegrationRecord | null>;
-  loadSecret(integrationId: number): Promise<string | null>;
+  loadIntegration(integrationId: string): Promise<IntegrationRecord | null>;
+  loadSecret(integrationId: string): Promise<string | null>;
   /** One transaction: rows upserted, rejects recorded, counters + watermark updated. */
   applyPage(input: PageApplyInput): Promise<RowOutcome[]>;
-  addErrors(jobId: number, profileId: number | null, errors: SyncErrorInput[]): Promise<void>;
+  addErrors(jobId: string, profileId: string | null, errors: SyncErrorInput[]): Promise<void>;
 }
 
 export interface EnqueueRequest {
-  integrationId: number;
+  integrationId: string;
   trigger: JobTrigger;
-  requestedBy: number | null;
-  retryOfJobId?: number | null;
+  requestedBy: string | null;
+  retryOfJobId?: string | null;
   attempt?: number;
   runAfter?: Date | null;
 }
@@ -147,12 +147,12 @@ export interface EnqueueRequest {
 export interface JobQueue {
   enqueue(request: EnqueueRequest): Promise<JobRecord>;
   claim(workerId: string): Promise<JobRecord | null>;
-  heartbeat(jobId: number, workerId: string): Promise<JobRecord>;
-  finish(jobId: number, workerId: string, status: JobStatus, summary: string | null): Promise<JobRecord>;
-  release(jobId: number, workerId: string): Promise<boolean>;
+  heartbeat(jobId: string, workerId: string): Promise<JobRecord>;
+  finish(jobId: string, workerId: string, status: JobStatus, summary: string | null): Promise<JobRecord>;
+  release(jobId: string, workerId: string): Promise<boolean>;
   recoverStale(staleSeconds: number): Promise<JobRecord[]>;
   dueIntegrations(limit: number): Promise<IntegrationRecord[]>;
-  setNextRun(integrationId: number, nextRunAt: Date | null): Promise<void>;
+  setNextRun(integrationId: string, nextRunAt: Date | null): Promise<void>;
   purgeHistory(keepDays: number): Promise<number>;
 }
 

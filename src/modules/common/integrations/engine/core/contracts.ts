@@ -15,10 +15,10 @@ import type { RetryPolicy, ScheduleConfig } from './schedule.js';
 // ---------------------------------------------------------------- configuration (validated)
 
 export interface ProfileConfig {
-  id: number;
+  id: string;
   name: string;
   isActive: boolean;
-  moduleId: number;
+  moduleId: string;
   moduleSlug: string;
   invoicePrefix: string;
   /** Provider-specific extraction settings, already validated by profileSettingsSchema. */
@@ -33,7 +33,7 @@ export interface ProfileConfig {
 }
 
 export interface IntegrationConfig {
-  id: number;
+  id: string;
   providerType: string;
   name: string;
   sourceSystem: string;

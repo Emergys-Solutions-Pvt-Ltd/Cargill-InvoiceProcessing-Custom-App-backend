@@ -8,8 +8,8 @@ import type { Logger } from './logger.js';
  * Payloads carry ids and counters only, never invoice data or credentials.
  */
 export interface JobRef {
-  jobId: number;
-  integrationId: number;
+  jobId: string;
+  integrationId: string;
   integrationName?: string;
   trigger?: string;
   attempt?: number;
@@ -26,9 +26,9 @@ export interface PageCounters {
 
 export interface SyncEventMap {
   'job.started': [JobRef];
-  'profile.started': [JobRef & { profileId: number; profileName: string; since: string | null }];
-  'page.processed': [JobRef & { profileId: number; pageNumber: number; counters: PageCounters }];
-  'profile.finished': [JobRef & { profileId: number; ok: boolean; message?: string }];
+  'profile.started': [JobRef & { profileId: string; profileName: string; since: string | null }];
+  'page.processed': [JobRef & { profileId: string; pageNumber: number; counters: PageCounters }];
+  'profile.finished': [JobRef & { profileId: string; ok: boolean; message?: string }];
   'job.finished': [JobRef & { status: string; durationMs: number; summary: string | null }];
   'job.retry_scheduled': [JobRef & { nextAttempt: number; runAfter: string }];
 }

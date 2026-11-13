@@ -4,32 +4,32 @@ import type { Mailbox, MailboxAttachment, MailboxEmail, MailboxEmailStatus, Stor
 
 // app.udt_mailbox_result / app.udt_mailbox_email_result / app.udt_mailbox_attachment_result
 interface MailboxResult {
-  id: number;
+  id: string;
   address: string;
   folder: string;
-  module_id: number;
+  module_id: string;
   delta_link: string | null;
   last_polled_at: Date | null;
   last_error: string | null;
 }
 
 interface MailboxEmailResult {
-  id: number;
-  mailbox_id: number;
+  id: string;
+  mailbox_id: string;
   graph_message_id: string;
   subject: string;
   from_address: string | null;
   received_at: Date;
   has_attachments: boolean;
   status: MailboxEmailStatus;
-  invoice_id: number | null;
+  invoice_id: string | null;
   is_new: boolean;
   attachments_pending: boolean;
 }
 
 interface MailboxAttachmentResult {
-  id: number;
-  mailbox_email_id: number;
+  id: string;
+  mailbox_email_id: string;
   file_name: string;
   mime_type: string;
   size_bytes: number;
@@ -89,7 +89,7 @@ export const getActiveMailboxes = async (): Promise<Mailbox[]> =>
   (await callFunction<MailboxResult>('usp_mailbox_get_active')).map(toMailbox);
 
 /** Stores one Graph message (email + plain-text body); isNew = false when it was already stored. */
-export const upsertEmail = async (mailboxId: number, m: GraphMessage): Promise<MailboxEmail> =>
+export const upsertEmail = async (mailboxId: string, m: GraphMessage): Promise<MailboxEmail> =>
   toEmail(
     await callFunctionSingle<MailboxEmailResult>('usp_mailbox_email_upsert', {
       p_mailbox_id: mailboxId,
@@ -107,7 +107,7 @@ export const upsertEmail = async (mailboxId: number, m: GraphMessage): Promise<M
   );
 
 /** Registers a stored file; returns the existing row when this Graph attachment was registered before. */
-export const addAttachment = async (mailboxEmailId: number, graphAttachmentId: string, file: StoredFile): Promise<MailboxAttachment> =>
+export const addAttachment = async (mailboxEmailId: string, graphAttachmentId: string, file: StoredFile): Promise<MailboxAttachment> =>
   toAttachment(
     await callFunctionSingle<MailboxAttachmentResult>('usp_mailbox_attachment_add', {
       p_mailbox_email_id: mailboxEmailId,
@@ -125,7 +125,7 @@ export const addAttachment = async (mailboxEmailId: number, graphAttachmentId: s
   );
 
 /** Records that the attachment loop of an email finished (gap G1); an error text marks the email Failed. Raises CA404. */
-export const markAttachmentsDone = async (mailboxEmailId: number, error: string | null = null): Promise<void> => {
+export const markAttachmentsDone = async (mailboxEmailId: string, error: string | null = null): Promise<void> => {
   await callFunctionSingle('usp_mailbox_attachments_done', { p_mailbox_email_id: mailboxEmailId, p_error: error });
 };
 
@@ -133,7 +133,7 @@ export const markAttachmentsDone = async (mailboxEmailId: number, error: string 
  * Stores the outcome of one poll. Success: (id, newDeltaLink, null). Failure: (id, null, message), the
  * old link is kept. Expired link: (id, null, message, true), the next poll does a full sync. Raises CA404.
  */
-export const setCursor = async (mailboxId: number, deltaLink: string | null, error: string | null, reset = false): Promise<void> => {
+export const setCursor = async (mailboxId: string, deltaLink: string | null, error: string | null, reset = false): Promise<void> => {
   await callFunctionSingle('usp_mailbox_set_cursor', {
     p_mailbox_id: mailboxId,
     p_delta_link: deltaLink,

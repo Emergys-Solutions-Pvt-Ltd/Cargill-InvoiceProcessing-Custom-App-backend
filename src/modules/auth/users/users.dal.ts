@@ -5,7 +5,7 @@ import { type UserStatus, type UserListItem, type LoginUserRecord, type UserList
 
 // app_auth.udt_user_result (+ password_hash for udt_user_login_result, + paging for udt_user_list_result)
 interface UserResult {
-  id: number;
+  id: string;
   username: string;
   name: string;
   email: string;
@@ -27,15 +27,18 @@ const toUser = (row: UserResult): UserListItem => ({
   assignedApps: row.assigned_apps ? row.assigned_apps.split(',') : [],
 });
 
-export const findActiveAuthUserById = async (id: number): Promise<AuthUser | null> => {
-  if (!Number.isInteger(id)) return null;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const findActiveAuthUserById = async (id: string): Promise<AuthUser | null> => {
+  // Tokens issued before the switch to uuid keys carry an integer subject: treat them as signed out
+  if (!UUID.test(id)) return null;
   const [row] = await callFunction<UserResult>('app_auth.usp_user_get_by_id', { p_user_id: id, p_active_only: true });
   if (!row) return null;
   const { email, name, role, assignedApps } = toUser(row);
   return { id: row.id, email, name, role, assignedApps };
 };
 
-export const findUserById = async (id: number): Promise<UserListItem | null> => {
+export const findUserById = async (id: string): Promise<UserListItem | null> => {
   const [row] = await callFunction<UserResult>('app_auth.usp_user_get_by_id', { p_user_id: id, p_active_only: false });
   return row ? toUser(row) : null;
 };
@@ -46,7 +49,7 @@ export const findUserForLogin = async (login: string): Promise<LoginUserRecord |
   return row ? { ...toUser(row), passwordHash: row.password_hash ?? null } : null;
 };
 
-export const touchLastLogin = async (id: number) => {
+export const touchLastLogin = async (id: string) => {
   await callFunction('app_auth.usp_user_touch_last_login', { p_user_id: id });
 };
 
@@ -76,7 +79,7 @@ export const createUser = async (input: CreateUserInput): Promise<UserListItem> 
   );
 
 /** Raises CA404 when the user does not exist, CA400 for an unknown app code, CA409 for a taken email. */
-export const updateUser = async (id: number, input: UpdateUserInput): Promise<UserListItem> =>
+export const updateUser = async (id: string, input: UpdateUserInput): Promise<UserListItem> =>
   toUser(
     await callFunctionSingle<UserResult>('app_auth.usp_user_update', {
       p_user_id: id,
@@ -89,6 +92,6 @@ export const updateUser = async (id: number, input: UpdateUserInput): Promise<Us
   );
 
 /** Raises CA400 when deleting your own account, CA404 when the user does not exist. */
-export const deleteUser = async (id: number, deletedBy: number): Promise<void> => {
+export const deleteUser = async (id: string, deletedBy: string): Promise<void> => {
   await callFunctionSingle('app_auth.usp_user_delete', { p_user_id: id, p_deleted_by: deletedBy });
 };

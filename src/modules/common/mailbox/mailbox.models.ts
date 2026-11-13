@@ -1,10 +1,10 @@
 import type { StorageProvider } from '../attachments/storage/file-storage.js';
 
 export interface Mailbox {
-  id: number;
+  id: string;
   address: string;
   folder: string;
-  moduleId: number;
+  moduleId: string;
   /** Graph delta link of the last finished poll; null = full sync on the next poll. */
   deltaLink: string | null;
   lastPolledAt: Date | null;
@@ -14,15 +14,15 @@ export interface Mailbox {
 export type MailboxEmailStatus = 'New' | 'Processed' | 'Ignored' | 'Failed';
 
 export interface MailboxEmail {
-  id: number;
-  mailboxId: number;
+  id: string;
+  mailboxId: string;
   graphMessageId: string;
   subject: string;
   fromAddress: string | null;
   receivedAt: Date;
   hasAttachments: boolean;
   status: MailboxEmailStatus;
-  invoiceId: number | null;
+  invoiceId: string | null;
   /** Stored by this call (false: it was already stored). */
   isNew: boolean;
   /** Has attachments that were never fully processed (new email, or an interrupted run - gap G1). */
@@ -30,8 +30,8 @@ export interface MailboxEmail {
 }
 
 export interface MailboxAttachment {
-  id: number;
-  mailboxEmailId: number;
+  id: string;
+  mailboxEmailId: string;
   fileName: string;
   mimeType: string;
   sizeBytes: number;

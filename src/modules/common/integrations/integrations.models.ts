@@ -1,8 +1,8 @@
 import type { JobRecord } from './engine/sync/ports.js';
 
 export interface ProfileWrite {
-  id: number | null;
-  moduleId: number;
+  id: string | null;
+  moduleId: string;
   /** Target module details (not persisted here; used to evaluate unsaved profiles in connection tests). */
   module: { slug: string; name: string; applicationCode: string; invoicePrefix: string };
   name: string;
@@ -18,7 +18,7 @@ export interface ProfileWrite {
 }
 
 export interface IntegrationWrite {
-  id: number | null;
+  id: string | null;
   expectedVersion: number | null;
   providerType: string;
   name: string;
@@ -38,9 +38,9 @@ export interface IntegrationWrite {
 }
 
 export interface SyncErrorRow {
-  id: number;
-  jobId: number;
-  profileId: number | null;
+  id: string;
+  jobId: string;
+  profileId: string | null;
   profileName: string | null;
   stage: string;
   externalKey: string | null;
@@ -50,7 +50,7 @@ export interface SyncErrorRow {
 }
 
 export interface IntegrationSummary {
-  integrationId: number;
+  integrationId: string;
   lastStatus: string | null;
   lastAttemptAt: Date | null;
   lastSuccessAt: Date | null;

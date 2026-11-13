@@ -25,6 +25,9 @@ import {
 
 /** Test doubles mirroring the semantics of the PostgreSQL functions (see database/postgres/tests). */
 
+/** Deterministic uuid for test fixtures: uid(1) = 00000000-0000-4000-8000-000000000001. */
+export const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
 export const TEST_KEY = Buffer.alloc(32, 7).toString('base64');
 
 export const baseMapping = {
@@ -38,9 +41,9 @@ export const baseMapping = {
 };
 
 export const profileRecord = (overrides: Partial<ProfileRecord> = {}): ProfileRecord => ({
-  id: 11,
-  integrationId: 1,
-  moduleId: 1,
+  id: uid(11),
+  integrationId: uid(1),
+  moduleId: uid(1),
   moduleSlug: 'GP',
   moduleName: 'General Payments',
   applicationCode: 'GP',
@@ -61,7 +64,7 @@ export const profileRecord = (overrides: Partial<ProfileRecord> = {}): ProfileRe
 });
 
 export const integrationRecord = (overrides: Partial<IntegrationRecord> = {}): IntegrationRecord => ({
-  id: 1,
+  id: uid(1),
   providerType: 'sap-odata',
   name: 'SAP test',
   description: null,
@@ -90,11 +93,11 @@ export const integrationRecord = (overrides: Partial<IntegrationRecord> = {}): I
 });
 
 export const jobRecord = (overrides: Partial<JobRecord> = {}): JobRecord => ({
-  id: 100,
-  integrationId: 1,
+  id: uid(100),
+  integrationId: uid(1),
   integrationName: 'SAP test',
   triggerType: 'manual',
-  requestedBy: 1,
+  requestedBy: uid(1),
   requestedByName: 'Admin',
   status: 'running',
   attempt: 1,
@@ -133,7 +136,7 @@ export class InMemorySyncStore implements SyncStore {
   integration: IntegrationRecord;
   sealedSecret: string | null = null;
   readonly invoices = new Map<string, StoredInvoice>(); // by external key
-  readonly errors: (SyncErrorInput & { jobId: number; profileId: number | null })[] = [];
+  readonly errors: (SyncErrorInput & { jobId: string; profileId: string | null })[] = [];
   readonly pages: PageApplyInput[] = [];
   /** External keys whose upsert fails with a database error. */
   readonly failKeys = new Set<string>();
@@ -144,7 +147,7 @@ export class InMemorySyncStore implements SyncStore {
     this.integration = integration;
   }
 
-  async loadIntegration(id: number) {
+  async loadIntegration(id: string) {
     return id === this.integration.id ? this.integration : null;
   }
 
@@ -182,7 +185,7 @@ export class InMemorySyncStore implements SyncStore {
     return outcomes;
   }
 
-  async addErrors(jobId: number, profileId: number | null, errors: SyncErrorInput[]) {
+  async addErrors(jobId: string, profileId: string | null, errors: SyncErrorInput[]) {
     for (const e of errors) this.errors.push({ ...e, jobId, profileId });
   }
 }
@@ -190,7 +193,7 @@ export class InMemorySyncStore implements SyncStore {
 export class InMemoryJobQueue implements JobQueue {
   readonly jobs: JobRecord[] = [];
   integrations: IntegrationRecord[] = [];
-  readonly nextRuns = new Map<number, Date | null>();
+  readonly nextRuns = new Map<string, Date | null>();
   purged = 0;
   private seq = 1;
 
@@ -199,7 +202,7 @@ export class InMemoryJobQueue implements JobQueue {
       throw new QueueConflictError('A synchronization is already queued or running for this integration.');
     }
     const job = jobRecord({
-      id: this.seq++, integrationId: r.integrationId, triggerType: r.trigger, requestedBy: r.requestedBy, status: 'queued',
+      id: uid(this.seq++), integrationId: r.integrationId, triggerType: r.trigger, requestedBy: r.requestedBy, status: 'queued',
       attempt: r.attempt ?? 1, retryOfJobId: r.retryOfJobId ?? null, runAfter: r.runAfter ?? new Date(0), startedAt: null, workerId: null,
     });
     this.jobs.push(job);
@@ -213,21 +216,21 @@ export class InMemoryJobQueue implements JobQueue {
     return { ...job };
   }
 
-  async heartbeat(jobId: number, workerId: string) {
+  async heartbeat(jobId: string, workerId: string) {
     const job = this.jobs.find((j) => j.id === jobId);
     if (!job || job.status !== 'running' || job.workerId !== workerId) throw new QueueConflictError('not owned');
     job.heartbeatAt = new Date();
     return { ...job };
   }
 
-  async finish(jobId: number, workerId: string, status: JobStatus, summary: string | null) {
+  async finish(jobId: string, workerId: string, status: JobStatus, summary: string | null) {
     const job = this.jobs.find((j) => j.id === jobId);
     if (!job || job.status !== 'running' || job.workerId !== workerId) throw new QueueConflictError('not owned');
     Object.assign(job, { status, errorSummary: summary, finishedAt: new Date() });
     return { ...job };
   }
 
-  async release(jobId: number, workerId: string) {
+  async release(jobId: string, workerId: string) {
     const job = this.jobs.find((j) => j.id === jobId && j.workerId === workerId && j.status === 'running');
     if (!job) return false;
     Object.assign(job, { status: 'queued', workerId: null });
@@ -245,7 +248,7 @@ export class InMemoryJobQueue implements JobQueue {
     return this.integrations.filter((i) => i.isActive && i.autoSyncEnabled && (!i.nextRunAt || i.nextRunAt <= new Date()));
   }
 
-  async setNextRun(id: number, next: Date | null) {
+  async setNextRun(id: string, next: Date | null) {
     this.nextRuns.set(id, next);
     const integration = this.integrations.find((i) => i.id === id);
     if (integration) integration.nextRunAt = next;
